@@ -21,7 +21,6 @@ namespace ColdBear.ConsoleApp
             // To work around this, I create a copy of the IOwinContext, and replace the headers. It's horrible, 
             // but was the only way I could make it work.
             //
-            // At pesent, the content type and content-length headers are being lost, but SRP is a challeng in itself
             //
             var contextParms = new Dictionary<String, object>();
 
@@ -30,7 +29,16 @@ namespace ColdBear.ConsoleApp
                 contextParms.Add(key.Key, key.Value);
             }
 
-            contextParms["owin.RequestHeaders"] = new Dictionary<string, string[]>() { { "Host", new string[1] { "localhost" } } };// existingHeaders;
+            var headers = (IDictionary<string, string[]>)context.Environment["owin.RequestHeaders"];
+
+            var contentType = headers["Content-Type"][0];
+            var contentLength = headers["Content-Length"][0];
+
+            contextParms["owin.RequestHeaders"] = new Dictionary<string, string[]>() {
+                { "Host", new string[1] { "localhost" } },
+                { "Content-Type", new string[1] { contentType } },
+                { "Content-Length", new string[1] { contentLength } }
+                };
 
             var newContext = new OwinContext(contextParms);
 
