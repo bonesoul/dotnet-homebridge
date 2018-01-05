@@ -1,4 +1,5 @@
 ﻿using Bonjour;
+using Microsoft.Owin.Hosting;
 using System;
 using System.Threading;
 using System.Web.Http;
@@ -18,39 +19,32 @@ namespace ColdBear.ConsoleApp
                 DNSSDService service = new DNSSDService();
 
                 TXTRecord txtRecord = new TXTRecord();
-                txtRecord.SetValue("c#", "1");
-                txtRecord.SetValue("ff", "0x01");
-                txtRecord.SetValue("id", "AA:AA:AA:AA:AA:AA");
-                txtRecord.SetValue("md", "Climenole1,0");
-                txtRecord.SetValue("pv", "1.0");
-                txtRecord.SetValue("s#", "1");
                 txtRecord.SetValue("sf", "1");
+                txtRecord.SetValue("ff", "0x00");
                 txtRecord.SetValue("ci", "2");
+                txtRecord.SetValue("id", "CC:22:3D:E3:CE:A6");
+                txtRecord.SetValue("md", "Climenole");
+                txtRecord.SetValue("s#", "1");
+                txtRecord.SetValue("c#", "1");
 
                 var mgr = new DNSSDEventManager();
                 mgr.RecordRegistered += Mgr_RecordRegistered;
                 mgr.OperationFailed += Mgr_OperationFailed;
                 mgr.ServiceRegistered += Mgr_ServiceRegistered;
 
-                var record = service.Register(0, 0, "Climenole Bridge", "_hap._tcp", null, null, 51826, txtRecord, mgr);
+                var record = service.Register(0, 0, "Climenole", "_hap._tcp", null, null, 51826, txtRecord, mgr);
 
                 Console.WriteLine("Advertising Service in background thread");
             });
             t.Start();
 
-            var config = new HttpSelfHostConfiguration("http://localhost:51826");
+            string baseAddress = "http://*:51826/";
 
-            config.Routes.MapHttpRoute("Pair Setup", "pair-setup", new { controller = "PairSetup" });
-            config.Routes.MapHttpRoute("Identify", "identify", new { controller = "Identify" });
-            config.Routes.MapHttpRoute("Pairings", "pairings", new { controller = "Pairings" });
+            StartOptions options = new StartOptions();
+            options.Urls.Add("http://*:51826");
 
-            SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
-            traceWriter.IsVerbose = true;
-            traceWriter.MinimumLevel = TraceLevel.Debug;
-
-            using (var server = new HttpSelfHostServer(config))
+            using (WebApp.Start(baseAddress))
             {
-                server.OpenAsync().Wait();
                 Console.WriteLine("Server started....");
                 Console.WriteLine("Press Enter to quit.");
                 Console.ReadLine();
