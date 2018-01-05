@@ -1,6 +1,9 @@
 ﻿using Bonjour;
 using System;
 using System.Threading;
+using System.Web.Http;
+using System.Web.Http.SelfHost;
+using System.Web.Http.Tracing;
 
 namespace ColdBear.ConsoleApp
 {
@@ -15,28 +18,43 @@ namespace ColdBear.ConsoleApp
                 DNSSDService service = new DNSSDService();
 
                 TXTRecord txtRecord = new TXTRecord();
-                txtRecord.SetValue("c#", 1);
-                txtRecord.SetValue("ff", 0x01);
+                txtRecord.SetValue("c#", "1");
+                txtRecord.SetValue("ff", "0x01");
                 txtRecord.SetValue("id", "AA:AA:AA:AA:AA:AA");
-                txtRecord.SetValue("md", "Jarvis1,0");
+                txtRecord.SetValue("md", "Climenole1,0");
                 txtRecord.SetValue("pv", "1.0");
                 txtRecord.SetValue("s#", "1");
-                txtRecord.SetValue("sf", 0x01);
-                txtRecord.SetValue("c1", 2);
+                txtRecord.SetValue("sf", "1");
+                txtRecord.SetValue("ci", "2");
 
                 var mgr = new DNSSDEventManager();
                 mgr.RecordRegistered += Mgr_RecordRegistered;
                 mgr.OperationFailed += Mgr_OperationFailed;
                 mgr.ServiceRegistered += Mgr_ServiceRegistered;
 
-                var record = service.Register(0, 0, "Jarvis Bridge", "_hap._tcp", null, null, 80, txtRecord, mgr);
+                var record = service.Register(0, 0, "Climenole Bridge", "_hap._tcp", null, null, 51826, txtRecord, mgr);
 
                 Console.WriteLine("Advertising Service in background thread");
             });
             t.Start();
 
-            Console.WriteLine("Press any key to close console");
-            Console.ReadKey();
+            var config = new HttpSelfHostConfiguration("http://localhost:51826");
+
+            config.Routes.MapHttpRoute("Pair Setup", "pair-setup", new { controller = "PairSetup" });
+            config.Routes.MapHttpRoute("Identify", "identify", new { controller = "Identify" });
+            config.Routes.MapHttpRoute("Pairings", "pairings", new { controller = "Pairings" });
+
+            SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
+            traceWriter.IsVerbose = true;
+            traceWriter.MinimumLevel = TraceLevel.Debug;
+
+            using (var server = new HttpSelfHostServer(config))
+            {
+                server.OpenAsync().Wait();
+                Console.WriteLine("Server started....");
+                Console.WriteLine("Press Enter to quit.");
+                Console.ReadLine();
+            }
 
             t.Join();
         }
