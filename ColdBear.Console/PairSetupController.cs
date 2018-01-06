@@ -93,7 +93,7 @@ namespace ColdBear.ConsoleApp
 
             if (parts.HasType(Constants.State))
             {
-                parts.GetTypeAsInt(Constants.State);
+                state = parts.GetTypeAsInt(Constants.State);
             }
 
             if (state == 1)
@@ -158,21 +158,29 @@ namespace ColdBear.ConsoleApp
                 var iOSPublicKey = parts.GetType(Constants.PublicKey);
                 var iOSProof = parts.GetType(Constants.Proof);
 
+
+                // HOW THE FUCK DO YOU VALIDATE THE PROOF???
+
+                // HOW THE FUCK DO YOU GENERATE THE SERVER PROOF???
+
+                //sessionServer.SetSessionKey(iOSPublicKey.ToHexString());
+
                 //var isValid = sessionServer.VerifyClientEvidenceMessage(new BigInteger(iOSProof));// .SetSessionKey(iOSPublicKey.ToHexString());
 
                 TLV responseTLV = new TLV();
                 responseTLV.AddType(Constants.State, 4);
+                responseTLV.AddType(Constants.Proof, identityHash);
 
                 //if (isValid)
                 //{
                 //    var accessoryProof = sessionServer.CalculateServerEvidenceMessage();
 
-                //    responseTLV.AddType(Constants.State, 4);
+                    //responseTLV.AddType(Constants.State, 4);
                 //    responseTLV.AddType(Constants.Proof, accessoryProof.ToByteArray());
                 //}
                 //else
                 //{
-                responseTLV.AddType(Constants.Error, ErrorCodes.Authentication);
+                //responseTLV.AddType(Constants.Error, ErrorCodes.Authentication);
                 //}
 
                 byte[] output = TLVParser.Serialise(responseTLV);
