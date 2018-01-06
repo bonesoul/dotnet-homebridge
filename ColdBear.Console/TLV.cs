@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace ColdBear.ConsoleApp
@@ -54,5 +55,9 @@ namespace ColdBear.ConsoleApp
             return rv;
         }
 
+        public bool HasType(Constants state)
+        {
+            return values.ContainsKey(state);
+        }
     }
 }
