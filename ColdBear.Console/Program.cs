@@ -10,8 +10,18 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
+        public const string ID = "CC:22:3D:E3:CE:B6";
+        public static string CODE;
+
         static void Main(string[] args)
         {
+            Random random = new Random();
+            int code = random.Next(100, 999);
+
+            CODE = $"123-45-{code}";
+
+            Console.WriteLine($"SERVER CODE: {CODE}");
+
             var t = new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
@@ -22,7 +32,7 @@ namespace ColdBear.ConsoleApp
                 txtRecord.SetValue("sf", "1");
                 txtRecord.SetValue("ff", "0x00");
                 txtRecord.SetValue("ci", "2");
-                txtRecord.SetValue("id", "CC:22:3D:E3:CE:A6");
+                txtRecord.SetValue("id", ID);
                 txtRecord.SetValue("md", "Climenole");
                 txtRecord.SetValue("s#", "1");
                 txtRecord.SetValue("c#", "1");

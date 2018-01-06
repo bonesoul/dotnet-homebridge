@@ -15,9 +15,9 @@ namespace ColdBear.ConsoleApp
             config.Routes.MapHttpRoute("Pairings", "pairings", new { controller = "Pairings" });
             config.Routes.MapHttpRoute("Accessories", "accessories", new { controller = "Accessories" });
 
-            SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
-            traceWriter.IsVerbose = true;
-            traceWriter.MinimumLevel = TraceLevel.Debug;
+            //SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
+            //traceWriter.IsVerbose = true;
+            //traceWriter.MinimumLevel = TraceLevel.Debug;
 
             appBuilder.Use(typeof(HeaderChangeMiddleware));
 
