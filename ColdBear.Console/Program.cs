@@ -2,25 +2,16 @@
 using Microsoft.Owin.Hosting;
 using System;
 using System.Threading;
-using System.Web.Http;
-using System.Web.Http.SelfHost;
-using System.Web.Http.Tracing;
 
 namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "CC:22:3D:E3:CE:B6";
-        public static string CODE;
+        public const string ID = "CC:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
-            Random random = new Random();
-            int code = random.Next(100, 999);
-
-            CODE = $"123-45-{code}";
-
-            Console.WriteLine($"SERVER CODE: {CODE}");
+           
 
             var t = new Thread(() =>
             {

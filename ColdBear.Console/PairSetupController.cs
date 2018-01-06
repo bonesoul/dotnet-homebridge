@@ -1,14 +1,9 @@
-﻿//using Org.BouncyCastle.Crypto.Agreement.Srp;
-//using Org.BouncyCastle.Crypto.Digests;
-//using Org.BouncyCastle.Math;
-//using Org.BouncyCastle.Security;
-using Org.BouncyCastle.Crypto;
+﻿using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Agreement.Srp;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Security;
-using SRP6;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -40,94 +35,72 @@ namespace ColdBear.ConsoleApp
             {
                 Debug.WriteLine("Pair Setup starting");
 
-                if (sessionServer != null)
+                Random randomNumber = new Random();
+                int code = randomNumber.Next(100, 999);
+
+                var CODE = $"123-45-{code}";
+
+                Console.WriteLine($"CODE: {CODE}");
+
+                Random rnd = new Random();
+                Byte[] salt = new Byte[16];
+                rnd.NextBytes(salt);
+
+                // **** BOUNCY CASTLE CODE ****
+                //https://www.programcreek.com/java-api-examples/index.php?api=org.bouncycastle.crypto.agreement.srp.SRP6Server
+
+                //IDigest digest = new Sha512Digest();
+
+                var parms = Srp6StandardGroups.rfc5054_3072;
+
+                Srp6VerifierGenerator gen = new Srp6VerifierGenerator();
+                gen.Init(parms, new Sha512Digest());
+
+                BigInteger verifier = gen.GenerateVerifier(salt, Encoding.UTF8.GetBytes(Program.ID), Encoding.UTF8.GetBytes(CODE));
+
+                SecureRandom random = new SecureRandom();
+
+                sessionServer = new Srp6Server();
+                sessionServer.Init(parms, verifier, new Sha512Digest(), random);
+
+                BigInteger publicKeyInt = sessionServer.GenerateServerCredentials(); // B
+                var publicKey = publicKeyInt.ToByteArray();
+
+                //Srp6Client client = new Srp6Client();
+                //client.Init(parms, digest, random);
+
+                //var clientPublicKey = client.GenerateClientCredentials(salt, Encoding.ASCII.GetBytes(Program.ID), Encoding.ASCII.GetBytes("456-45-456"));
+                //client.CalculateSecret(publicKeyInt);
+                //var clientProof = client.CalculateClientEvidenceMessage();
+
+                //sessionServer.CalculateSecret(clientPublicKey);
+
+                //Console.WriteLine("M1");
+                //Console.WriteLine(ByteArrayToString(clientProof.ToByteArray()));
+
+                //var isValid = sessionServer.VerifyClientEvidenceMessage(clientProof);
+
+                TLV responseTLV = new TLV();
+
+                if (publicKey[0] == 0x00)
                 {
-                    Debug.WriteLine("A session is already in progress, so this request must be rejected!");
-
-                    TLV responseTLV = new TLV();
-
-                    responseTLV.AddType(Constants.State, 2);
-                    responseTLV.AddType(Constants.Error, ErrorCodes.Busy);
-
-                    byte[] output = TLVParser.Serialise(responseTLV);
-
-                    ByteArrayContent content = new ByteArrayContent(output);
-                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                    {
-                        Content = content
-                    };
+                    Debug.WriteLine("Server PublicKey starts with a null, so let's strip that off!");
+                    Array.Copy(publicKey, 1, publicKey, 0, publicKey.Length - 1);
                 }
-                else
+
+                responseTLV.AddType(Constants.State, 2);
+                responseTLV.AddType(Constants.PublicKey, publicKey);
+                responseTLV.AddType(Constants.Salt, salt);
+
+                byte[] output = TLVParser.Serialise(responseTLV);
+
+                ByteArrayContent content = new ByteArrayContent(output);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
-
-                    Random rnd = new Random();
-                    Byte[] salt = new Byte[16];
-                    rnd.NextBytes(salt);
-
-                    //// Server generates public-key, scrambler, and salt
-                    ////
-                    //sessionServer = new Srp6(identityHash, modulus, generator, salt.ToHexString());
-
-                    ////var salt = sessionServer.Salt.ToByteArray();
-                    //var publicKey = sessionServer.PublicKey.ToByteArray();
-
-                    // **** BOUNCY CASTLE CODE ****
-                    //https://www.programcreek.com/java-api-examples/index.php?api=org.bouncycastle.crypto.agreement.srp.SRP6Server
-
-                    //Random rnd = new Random();
-                    //Byte[] salt = new Byte[16];
-                    //rnd.NextBytes(salt);
-
-                    IDigest digest = new Sha512Digest();
-
-                    var parms = Srp6StandardGroups.rfc5054_3072;
-
-                    Srp6VerifierGenerator gen = new Srp6VerifierGenerator();
-                    gen.Init(parms, digest);
-
-                    BigInteger verifier = gen.GenerateVerifier(salt, Encoding.UTF8.GetBytes(Program.ID), Encoding.UTF8.GetBytes(Program.CODE));
-
-                    SecureRandom random = new SecureRandom();
-
-                    sessionServer = new Srp6Server();
-                    sessionServer.Init(parms, verifier, digest, random);
-
-                    BigInteger publicKeyInt = sessionServer.GenerateServerCredentials(); // B
-                    var publicKey = publicKeyInt.ToByteArray();
-
-                    //Srp6Client client = new Srp6Client();
-                    //client.Init(parms, digest, random);
-
-                    //var clientPublicKey = client.GenerateClientCredentials(salt, Encoding.ASCII.GetBytes(Program.ID), Encoding.ASCII.GetBytes("456-45-456"));
-                    //client.CalculateSecret(publicKeyInt);
-                    //var clientProof = client.CalculateClientEvidenceMessage();
-
-                    //sessionServer.CalculateSecret(clientPublicKey);
-
-                    //Console.WriteLine("M1");
-                    //Console.WriteLine(ByteArrayToString(clientProof.ToByteArray()));
-
-
-                    //var isValid = sessionServer.VerifyClientEvidenceMessage(clientProof);
-
-                    TLV responseTLV = new TLV();
-
-                    responseTLV.AddType(Constants.State, 2);
-                    responseTLV.AddType(Constants.PublicKey, publicKey);
-                    responseTLV.AddType(Constants.Salt, salt);
-
-                    byte[] output = TLVParser.Serialise(responseTLV);
-
-                    ByteArrayContent content = new ByteArrayContent(output);
-                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                    {
-                        Content = content
-                    };
-                }
+                    Content = content
+                };
             }
             else if (state == 3)
             {
