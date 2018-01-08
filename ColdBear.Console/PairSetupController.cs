@@ -192,11 +192,10 @@ namespace ColdBear.ConsoleApp
                 byte[] authTag = new byte[16];
                 Buffer.BlockCopy(iOSPublicKey, messageDataLength, authTag, 0, 16);
 
-                HMAC h = new HMACSHA512();
-                HKDF g = new HKDF(() => { return new HMACSHA512(); }, Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Info"));
+                HKDF g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Info"));
                 var key = g.GetBytes(32);
 
-                var chacha = new ChaChaEngine();
+                var chacha = new ChaChaEngine(20);
                 var parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg05"));
                 chacha.Init(false, parameters);
 
@@ -207,11 +206,12 @@ namespace ColdBear.ConsoleApp
 
                 poly.BlockUpdate(messageData, 0, messageData.Length);
 
-                poly.BlockUpdate(BitConverter.GetBytes(messageData.Length), 0, 8);
+                poly.BlockUpdate(BitConverter.GetBytes((long)messageData.Length), 0, 8);
 
                 byte[] calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);
 
+                // Copy calculatedMAC to authTag
                 //if (!Arrays.constantTimeAreEqual(calculatedMAC, receivedMAC))
                 //{
                 //    throw new TlsFatalAlert(AlertDescription.bad_record_mac);
@@ -225,9 +225,14 @@ namespace ColdBear.ConsoleApp
 
                 var subData = TLVParser.Parse(output);
 
-                //byte[] username = d.getBytes(MessageType.USERNAME);
-                //byte[] ltpk = d.getBytes(MessageType.PUBLIC_KEY);
-                //byte[] proof = d.getBytes(MessageType.SIGNATURE);
+                byte[] username = subData.GetType(Constants.Identifier);
+                byte[] ltpk = subData.GetType(Constants.PublicKey);
+                byte[] proof = subData.GetType(Constants.Signature);
+
+                // username and ltpk should be saved!!!
+                //
+
+                Console.WriteLine("Step 4/6 is complete."); 
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
@@ -235,14 +240,41 @@ namespace ColdBear.ConsoleApp
 
         private KeyParameter InitRecordMAC(ChaChaEngine cipher)
         {
+            byte[] zeroes = StringToByteArray(
+           "00000000000000000000000000000000"
+           + "00000000000000000000000000000000"
+           + "00000000000000000000000000000000"
+           + "00000000000000000000000000000000");
+
             byte[] firstBlock = new byte[64];
-            cipher.ProcessBytes(firstBlock, 0, firstBlock.Length, firstBlock, 0);
+            cipher.ProcessBytes(zeroes, 0, firstBlock.Length, firstBlock, 0);
 
             // NOTE: The BC implementation puts 'r' after 'k'
-            Array.Copy(firstBlock, 0, firstBlock, 32, 16);
+            //Array.Copy(firstBlock, 0, firstBlock, 32, 16);
+            //KeyParameter macKey = new KeyParameter(firstBlock, 16, 32);
+            //Poly1305KeyGenerator.clamp(macKey.getKey());
+
+            // 8th January, 2018 21:05
+            //
+            // The above code is from the github HAP-Java implementation. The problem was that the clamp() operator
+            // wasn't having any effect! I'm guessing it's because the getKey() returns a new instance each time.
+            // To work around this, I create a buffer, clamp it and then create a KeyParameter with the new byte[]
+            // How the fuck I spotted this I'll never know.
+
+
             KeyParameter macKey = new KeyParameter(firstBlock, 16, 32);
-            Poly1305KeyGenerator.Clamp(macKey.GetKey());
-            return macKey;
+
+            var key = macKey.GetKey();
+
+            Console.WriteLine(ByteArrayToString(key));
+
+            Poly1305KeyGenerator.Clamp(key);
+
+            Console.WriteLine(ByteArrayToString(key));
+
+            Poly1305KeyGenerator.CheckKey(key);
+
+            return new KeyParameter(key);
         }
 
         private BigInteger FromHex(string hex)
