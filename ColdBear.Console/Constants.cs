@@ -6,8 +6,9 @@
         Salt = 2,
         PublicKey = 3,
         Proof = 4,
+        EncryptedData = 5,
         State = 6,
-        Error = 7
+        Error = 7,
     }
 
     public enum ErrorCodes

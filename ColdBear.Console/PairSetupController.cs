@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Crypto;
+﻿using AronParker.Hkdf;
+using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Agreement.Srp;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -178,8 +179,26 @@ namespace ColdBear.ConsoleApp
             {
                 Debug.WriteLine("Exchange Response");
 
+                var iOSPublicKey = parts.GetType(Constants.EncryptedData); // A 
+
+                int messageDataLength = iOSPublicKey.Length - 16;
+
+                byte[] messageData = new byte[messageDataLength];
+                Buffer.BlockCopy(iOSPublicKey, 0, messageData, 0, messageDataLength);
+
+                byte[] authTag = new byte[16];
+                Buffer.BlockCopy(iOSPublicKey, messageDataLength, authTag, 0, 16);
+
+                //var hkdf = new Hkdf(HashAlgorithmName.SHA512);
+                //var output = hkdf.Extract(iOSPublicKey, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"));
+                //var moreoutput = hkdf.Expand(output, 32, Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Salt"));
 
 
+
+                //messageData = new byte[d.getLength(MessageType.ENCRYPTED_DATA) - 16];
+                //authTagData = new byte[16];
+                //d.getBytes(MessageType.ENCRYPTED_DATA, messageData, 0);
+                //d.getBytes(MessageType.ENCRYPTED_DATA, authTagData, messageData.length);
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
