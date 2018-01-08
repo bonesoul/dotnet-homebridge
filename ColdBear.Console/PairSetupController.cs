@@ -207,9 +207,7 @@ namespace ColdBear.ConsoleApp
 
                 poly.BlockUpdate(messageData, 0, messageData.Length);
 
-                // Pack isn't found.
-                //byte[] ciphertextLength = pack.longToLittleEndian(messageData.Length);
-                //poly.BlockUpdate(ciphertextLength, 0, 8);
+                poly.BlockUpdate(BitConverter.GetBytes(messageData.Length), 0, 8);
 
                 byte[] calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);
@@ -225,7 +223,11 @@ namespace ColdBear.ConsoleApp
                 Debug.WriteLine("Decoded Text");
                 Debug.WriteLine(ByteArrayToString(output));
 
+                var subData = TLVParser.Parse(output);
 
+                //byte[] username = d.getBytes(MessageType.USERNAME);
+                //byte[] ltpk = d.getBytes(MessageType.PUBLIC_KEY);
+                //byte[] proof = d.getBytes(MessageType.SIGNATURE);
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
