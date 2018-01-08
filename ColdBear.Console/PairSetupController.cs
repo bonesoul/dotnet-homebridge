@@ -1,14 +1,16 @@
-﻿using AronParker.Hkdf;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Crypto.Agreement.Srp;
+﻿//using AronParker.Hkdf;
+using Org.BouncyCastle.Crypto.Agreement.Kdf;
 using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Security;
+using SecurityDriven.Inferno.Kdf;
 using SRP;
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -24,6 +26,7 @@ namespace ColdBear.ConsoleApp
         private static byte[] salt;
 
         private static byte[] server_k;
+        private static byte[] server_K;
         private static byte[] server_x;
         private static System.Numerics.BigInteger server_v;
         private static byte[] server_b;
@@ -131,7 +134,7 @@ namespace ColdBear.ConsoleApp
 
                 // Compute the session key
                 //
-                var server_K = sessionServer.Compute_K(server_S.ToBytes());
+                server_K = sessionServer.Compute_K(server_S.ToBytes());
 
                 Console.WriteLine("K (Session Key)");
                 Console.WriteLine(ByteArrayToString(server_K));
@@ -189,19 +192,55 @@ namespace ColdBear.ConsoleApp
                 byte[] authTag = new byte[16];
                 Buffer.BlockCopy(iOSPublicKey, messageDataLength, authTag, 0, 16);
 
-                //var hkdf = new Hkdf(HashAlgorithmName.SHA512);
-                //var output = hkdf.Extract(iOSPublicKey, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"));
-                //var moreoutput = hkdf.Expand(output, 32, Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Salt"));
+                HMAC h = new HMACSHA512();
+                HKDF g = new HKDF(() => { return new HMACSHA512(); }, Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Info"));
+                var key = g.GetBytes(32);
+
+                var chacha = new ChaChaEngine();
+                var parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg05"));
+                chacha.Init(false, parameters);
+
+                KeyParameter macKey = InitRecordMAC(chacha);
+
+                var poly = new Poly1305();
+                poly.Init(macKey);
+
+                poly.BlockUpdate(messageData, 0, messageData.Length);
+
+                // Pack isn't found.
+                //byte[] ciphertextLength = pack.longToLittleEndian(messageData.Length);
+                //poly.BlockUpdate(ciphertextLength, 0, 8);
+
+                byte[] calculatedMAC = new byte[poly.GetMacSize()];
+                poly.DoFinal(calculatedMAC, 0);
+
+                //if (!Arrays.constantTimeAreEqual(calculatedMAC, receivedMAC))
+                //{
+                //    throw new TlsFatalAlert(AlertDescription.bad_record_mac);
+                //}
+
+                byte[] output = new byte[messageData.Length];
+                chacha.ProcessBytes(messageData, 0, messageData.Length, output, 0);
+
+                Debug.WriteLine("Decoded Text");
+                Debug.WriteLine(ByteArrayToString(output));
 
 
-
-                //messageData = new byte[d.getLength(MessageType.ENCRYPTED_DATA) - 16];
-                //authTagData = new byte[16];
-                //d.getBytes(MessageType.ENCRYPTED_DATA, messageData, 0);
-                //d.getBytes(MessageType.ENCRYPTED_DATA, authTagData, messageData.length);
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+        }
+
+        private KeyParameter InitRecordMAC(ChaChaEngine cipher)
+        {
+            byte[] firstBlock = new byte[64];
+            cipher.ProcessBytes(firstBlock, 0, firstBlock.Length, firstBlock, 0);
+
+            // NOTE: The BC implementation puts 'r' after 'k'
+            Array.Copy(firstBlock, 0, firstBlock, 32, 16);
+            KeyParameter macKey = new KeyParameter(firstBlock, 16, 32);
+            Poly1305KeyGenerator.Clamp(macKey.GetKey());
+            return macKey;
         }
 
         private BigInteger FromHex(string hex)
