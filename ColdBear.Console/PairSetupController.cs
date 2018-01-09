@@ -3,6 +3,7 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Tls;
 using Org.BouncyCastle.Math;
 using SecurityDriven.Inferno.Kdf;
 using SRP;
@@ -192,45 +193,51 @@ namespace ColdBear.ConsoleApp
                 Buffer.BlockCopy(iOSEncryptedData, messageDataLength, authTag, 0, 16);
 
                 HKDF g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Info"));
-                var key = g.GetBytes(32);
+                var outputKey = g.GetBytes(32);
+                var hkdfEncKey = outputKey;
 
                 var chacha = new ChaChaEngine(20);
-                var parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg05"));
+                var parameters = new ParametersWithIV(new KeyParameter(outputKey), Encoding.UTF8.GetBytes("PS-Msg05"));
                 chacha.Init(false, parameters);
+
 
                 KeyParameter macKey = InitRecordMAC(chacha);
 
-                var poly = new Poly1305();
+                var iOSPoly = new Poly1305();
 
-                Console.WriteLine(poly.AlgorithmName);
+                #region OLD POLY
 
-                poly.Init(macKey);
+                bool valid = Sodium.OneTimeAuth.Verify(messageData, authTag, outputKey);
 
-                poly.BlockUpdate(messageData, 0, messageData.Length);
-                //if (messageData.Length % 16 != 0)
-                //{
-                //    int round = 16 - (messageData.Length % 16);
-                //    poly.BlockUpdate(new byte[round], 0, round);
-                //}
-                //poly.BlockUpdate(new byte[8], 0, 8);
-                //poly.BlockUpdate(BitConverter.GetBytes(messageData.LongLength), 0, 8);
-                //poly.BlockUpdate(ReverseBytes(messageData.LongLength), 0, 8);
-                //poly.BlockUpdate(ReverseBytes(messageData.Length), 0, 8);
+                iOSPoly.Init(macKey);
 
-                byte[] calculatedMAC = new byte[poly.GetMacSize()];
-                poly.DoFinal(calculatedMAC, 0);
+                iOSPoly.BlockUpdate(messageData, 0, messageData.Length);
+                if (messageData.Length % 16 != 0)
+                {
+                    int round = 16 - (messageData.Length % 16);
+                    iOSPoly.BlockUpdate(new byte[round], 0, round);
+                }
+                iOSPoly.BlockUpdate(new byte[8], 0, 8);
+                iOSPoly.BlockUpdate(ReverseBytes(messageData.LongLength), 0, 8);
+
+                byte[] calculatedMAC = new byte[iOSPoly.GetMacSize()];
+                iOSPoly.DoFinal(calculatedMAC, 0);
 
                 // Verify this calculatedMac matches the iOS authTag.
+                // This is failing, which implies the way I'm generating the MAC is incorrect.
                 //
-                if (!CryptoBytes.ConstantTimeEquals(authTag, calculatedMAC))
-                {
-                    //return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
-                }
+                bool isAuthTagValid = CryptoBytes.ConstantTimeEquals(authTag, calculatedMAC);
+                //if (!isAuthTagValid)
+                //{
+                //    return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+                //}
+
+                #endregion
 
                 byte[] output = new byte[messageData.Length];
                 chacha.ProcessBytes(messageData, 0, messageData.Length, output, 0);
 
-                Debug.WriteLine("Decoded TLV");
+                Debug.WriteLine("Decrypted TLV");
                 Debug.WriteLine(ByteArrayToString(output));
 
                 var subData = TLVParser.Parse(output);
@@ -238,6 +245,8 @@ namespace ColdBear.ConsoleApp
                 byte[] username = subData.GetType(Constants.Identifier);
                 byte[] ltpk = subData.GetType(Constants.PublicKey);
                 byte[] proof = subData.GetType(Constants.Signature);
+
+
 
                 Console.WriteLine("iOSDeviceInfo");
                 Console.WriteLine($"Username [{username.Length}]: {Encoding.UTF8.GetString(username)}");
@@ -284,7 +293,7 @@ namespace ColdBear.ConsoleApp
                 Console.WriteLine("Response Generation");
 
                 g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Info"));
-                key = g.GetBytes(32);
+                outputKey = g.GetBytes(32);
 
                 // Create the AccessoryLTPK
                 //
@@ -296,7 +305,7 @@ namespace ColdBear.ConsoleApp
 
                 Ed25519.KeyPairFromSeed(out accessoryLTPK, out accessoryLTSK, seed);
 
-                byte[] material = key.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(accessoryLTPK).ToArray();
+                byte[] material = outputKey.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(accessoryLTPK).ToArray();
 
                 byte[] signature = Ed25519.Sign(material, accessoryLTSK);
 
@@ -314,59 +323,66 @@ namespace ColdBear.ConsoleApp
                 //
                 Ed25519.Verify(signature, material, accessoryLTPK);
 
-
                 byte[] plaintext = TLVParser.Serialise(encoder);
 
                 chacha = new ChaChaEngine(20);
-                parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg06"));
+                parameters = new ParametersWithIV(new KeyParameter(hkdfEncKey), Encoding.UTF8.GetBytes("PS-Msg06"));
                 chacha.Init(true, parameters);
 
                 macKey = InitRecordMAC(chacha);
 
                 byte[] ciphertext = new byte[plaintext.Length];
                 chacha.ProcessBytes(plaintext, 0, plaintext.Length, ciphertext, 0);
+                
+                var poly = new Poly1305();
+                iOSPoly.Init(macKey);
 
-                poly = new Poly1305();
-                poly.Init(macKey);
+                //iOSPoly.BlockUpdate
 
-                poly.BlockUpdate(ciphertext, 0, ciphertext.Length);
+                //iOSPoly.BlockUpdate(ciphertext, 0, ciphertext.Length);
 
-                poly.BlockUpdate(BitConverter.GetBytes((long)ciphertext.Length), 0, 8);
+                //iOSPoly.BlockUpdate(BitConverter.GetBytes((long)ciphertext.Length), 0, 8);
 
-                calculatedMAC = new byte[poly.GetMacSize()];
-                poly.DoFinal(calculatedMAC, 0);
+                //var accessoryCalculatedMAC = new byte[iOSPoly.GetMacSize()];
+                //iOSPoly.DoFinal(accessoryCalculatedMAC, 0);
+                //var accessoryCalculatedMAC = Sodium.OneTimeAuth.Sign(Encoding.UTF8.GetString(ciphertext), macKey.GetKey());
+                //var verifyMac = Sodium.OneTimeAuth.Verify(ciphertext, accessoryCalculatedMAC, macKey.GetKey());
 
+                //byte[] ret = ciphertext.Concat(accessoryCalculatedMAC).ToArray();
 
+                //TLV responseTLV = new TLV();
+                //responseTLV.AddType(Constants.State, 6);
+                //responseTLV.AddType(Constants.EncryptedData, ret);
 
-                byte[] ret = new byte[ciphertext.Length + 16];
-                Array.Copy(ciphertext, 0, ret, 0, ciphertext.Length);
-                Array.Copy(calculatedMAC, 0, ret, ciphertext.Length, 16);
+                //output = TLVParser.Serialise(responseTLV);
 
-                TLV responseTLV = new TLV();
-                responseTLV.AddType(Constants.State, 6);
-                responseTLV.AddType(Constants.EncryptedData, ret);
+                //ByteArrayContent content = new ByteArrayContent(output);
+                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
 
-                output = TLVParser.Serialise(responseTLV);
+                //Console.WriteLine("Step 6/6 is complete.");
 
-                ByteArrayContent content = new ByteArrayContent(output);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                Console.WriteLine("Step 6/6 is complete.");
-
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = content
-                };
+                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                //{
+                //    Content = content
+                //};
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
         }
 
-        static byte[] ReverseBytes(long val)
+        static byte[] ReverseBytes(long value)
         {
-            byte[] longAsBytes = BitConverter.GetBytes(val);
-            Array.Reverse(longAsBytes);
-            return longAsBytes;
+            byte[] bytes = BitConverter.GetBytes(value);
+
+            //Then, if we need big endian for our protocol for instance,
+            //Just check if you need to convert it or not:
+            //}
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(bytes); //reverse it so we get big endian.
+            }
+
+            return bytes;
         }
 
         private KeyParameter InitRecordMAC(ChaChaEngine cipher)
