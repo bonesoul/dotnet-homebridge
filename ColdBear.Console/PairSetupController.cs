@@ -248,11 +248,11 @@ namespace ColdBear.ConsoleApp
                 g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Info"));
                 key = g.GetBytes(32);
 
-                byte[] publicKey = Ed25519.PublicKey(server_b);
+                byte[] publicKey = Ed25519.PublicKey(key);
 
                 byte[] material = key.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(publicKey).ToArray();
 
-                byte[] signingProof = Ed25519.Signature(material, server_b, publicKey);
+                byte[] signingProof = Ed25519.Signature(material, key, publicKey);
 
                 Console.WriteLine("AccessoryDeviceInfo");
                 Console.WriteLine($"Username [{Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().Length}]: {Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper()}");
