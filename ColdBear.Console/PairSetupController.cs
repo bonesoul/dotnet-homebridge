@@ -198,6 +198,7 @@ namespace ColdBear.ConsoleApp
 
                 HKDF g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Info"));
                 var key = g.GetBytes(32);
+                var hkdf_enc_key = key;
 
                 var chacha = new ChaChaEngine(20);
                 var parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg05"));
@@ -248,11 +249,11 @@ namespace ColdBear.ConsoleApp
                 g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Info"));
                 key = g.GetBytes(32);
 
-                byte[] publicKey = Ed25519.PublicKey(key);
+                byte[] publicKey = Ed25519.PublicKey(server_b);
 
                 byte[] material = key.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(publicKey).ToArray();
 
-                byte[] signingProof = Ed25519.Signature(material, key, publicKey);
+                byte[] signingProof = Ed25519.Signature(material, server_b, publicKey);
 
                 Console.WriteLine("AccessoryDeviceInfo");
                 Console.WriteLine($"Username [{Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().Length}]: {Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper()}");
@@ -261,13 +262,13 @@ namespace ColdBear.ConsoleApp
 
                 TLV encoder = new TLV();
                 encoder.AddType(Constants.Identifier, Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString()));
-                encoder.AddType(Constants.PublicKey, server_B.ToBytes());
+                encoder.AddType(Constants.PublicKey, publicKey);
                 encoder.AddType(Constants.Signature, signingProof);
 
                 byte[] plaintext = TLVParser.Serialise(encoder);
 
                 chacha = new ChaChaEngine(20);
-                parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg06"));
+                parameters = new ParametersWithIV(new KeyParameter(hkdf_enc_key), Encoding.UTF8.GetBytes("PS-Msg06"));
                 chacha.Init(true, parameters);
 
                 macKey = InitRecordMAC(chacha);
@@ -278,9 +279,9 @@ namespace ColdBear.ConsoleApp
                 poly = new Poly1305();
                 poly.Init(macKey);
 
-                poly.BlockUpdate(messageData, 0, messageData.Length);
+                poly.BlockUpdate(ciphertext, 0, ciphertext.Length);
 
-                poly.BlockUpdate(BitConverter.GetBytes((long)messageData.Length), 0, 8);
+                poly.BlockUpdate(BitConverter.GetBytes((long)ciphertext.Length), 0, 8);
 
                 calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);

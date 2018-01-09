@@ -25,7 +25,7 @@ namespace ColdBear.ConsoleApp.Crypto
     {
         private static byte[] ComputeHash(byte[] m)
         {
-            using (var sha512 = SHA512Managed.Create())
+            using (var sha512 = SHA512.Create())
             {
                 return sha512.ComputeHash(m);
             }
