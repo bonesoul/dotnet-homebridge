@@ -1,13 +1,9 @@
-﻿//using AronParker.Hkdf;
-using ColdBear.ConsoleApp.Crypto;
-using Org.BouncyCastle.Crypto.Agreement.Kdf;
-using Org.BouncyCastle.Crypto.Digests;
+﻿using Chaos.NaCl;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
-using Org.BouncyCastle.Security;
 using SecurityDriven.Inferno.Kdf;
 using SRP;
 using System;
@@ -167,7 +163,6 @@ namespace ColdBear.ConsoleApp
                 else
                 {
                     Console.WriteLine("Verification failed as iOS provided code was incorrect");
-
                     responseTLV.AddType(Constants.Error, ErrorCodes.Authentication);
                 }
 
@@ -198,7 +193,6 @@ namespace ColdBear.ConsoleApp
 
                 HKDF g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Info"));
                 var key = g.GetBytes(32);
-                var hkdf_enc_key = key;
 
                 var chacha = new ChaChaEngine(20);
                 var parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg05"));
@@ -215,6 +209,13 @@ namespace ColdBear.ConsoleApp
 
                 byte[] calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);
+
+                // Verify this calculatedMac matches the iOS authTag.
+                //
+                if (!CryptoBytes.ConstantTimeEquals(authTag, calculatedMAC))
+                {
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+                }
 
                 byte[] output = new byte[messageData.Length];
                 chacha.ProcessBytes(messageData, 0, messageData.Length, output, 0);
@@ -233,6 +234,32 @@ namespace ColdBear.ConsoleApp
                 Console.WriteLine($"LTPK [{ltpk.Length}]: {ByteArrayToString(ltpk)}");
                 Console.WriteLine($"Proof [{proof.Length}]: {ByteArrayToString(proof)}");
 
+                // Verify the proof matches the INFO
+                //
+                HKDF hkdf = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Controller-Sign-Info"));
+                byte[] okm = hkdf.GetBytes(32);
+
+                byte[] completeData = okm.Concat(username).Concat(ltpk).ToArray();
+
+                if (!Ed25519.Verify(proof, completeData, ltpk))
+                {
+                    Console.WriteLine("Verification failed as iOS provided code was incorrect");
+                    var errorTLV = new TLV();
+                    errorTLV.AddType(Constants.Error, ErrorCodes.Authentication);
+
+                    byte[] errorOutput = TLVParser.Serialise(errorTLV);
+
+                    var errorContent = new ByteArrayContent(output);
+                    errorContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = errorContent
+                    };
+                }
+
+                // Save the iOS Device's information.
+                //
                 LiteDB.LiteDatabase database = new LiteDB.LiteDatabase("Filename=Hap.db");
 
                 var pairingsCollection = database.GetCollection("pairings");
@@ -249,26 +276,39 @@ namespace ColdBear.ConsoleApp
                 g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Info"));
                 key = g.GetBytes(32);
 
-                byte[] publicKey = Ed25519.PublicKey(server_b);
+                // Create the AccessoryLTPK
+                //
+                byte[] accessoryLTSK;
+                byte[] accessoryLTPK;
 
-                byte[] material = key.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(publicKey).ToArray();
+                var seed = new byte[32];
+                RandomNumberGenerator.Create().GetBytes(seed);
 
-                byte[] signingProof = Ed25519.Signature(material, server_b, publicKey);
+                Ed25519.KeyPairFromSeed(out accessoryLTPK, out accessoryLTSK, seed);
+
+                byte[] material = key.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(accessoryLTPK).ToArray();
+
+                byte[] signature = Ed25519.Sign(material, accessoryLTSK);
 
                 Console.WriteLine("AccessoryDeviceInfo");
                 Console.WriteLine($"Username [{Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().Length}]: {Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper()}");
-                Console.WriteLine($"LTPK [{publicKey.Length}]: {ByteArrayToString(publicKey)}");
-                Console.WriteLine($"Proof [{signingProof.Length}]: {ByteArrayToString(signingProof)}");
+                Console.WriteLine($"LTPK [{accessoryLTPK.Length}]: {ByteArrayToString(accessoryLTPK)}");
+                Console.WriteLine($"Proof [{signature.Length}]: {ByteArrayToString(signature)}");
 
                 TLV encoder = new TLV();
                 encoder.AddType(Constants.Identifier, Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString()));
-                encoder.AddType(Constants.PublicKey, publicKey);
-                encoder.AddType(Constants.Signature, signingProof);
+                encoder.AddType(Constants.PublicKey, accessoryLTPK);
+                encoder.AddType(Constants.Signature, signature);
+
+                // Verify our own signature
+                //
+                Ed25519.Verify(signature, material, accessoryLTPK);
+
 
                 byte[] plaintext = TLVParser.Serialise(encoder);
 
                 chacha = new ChaChaEngine(20);
-                parameters = new ParametersWithIV(new KeyParameter(hkdf_enc_key), Encoding.UTF8.GetBytes("PS-Msg06"));
+                parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg06"));
                 chacha.Init(true, parameters);
 
                 macKey = InitRecordMAC(chacha);
@@ -285,6 +325,8 @@ namespace ColdBear.ConsoleApp
 
                 calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);
+
+
 
                 byte[] ret = new byte[ciphertext.Length + 16];
                 Array.Copy(ciphertext, 0, ret, 0, ciphertext.Length);

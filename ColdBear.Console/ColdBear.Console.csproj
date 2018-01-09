@@ -35,6 +35,9 @@
     <Reference Include="BouncyCastle.Crypto, Version=1.8.1.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
       <HintPath>..\packages\BouncyCastle.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
+    <Reference Include="Chaos.NaCl, Version=0.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\dlech.Chaos.NaCl.0.1.0.0\lib\net40\Chaos.NaCl.dll</HintPath>
+    </Reference>
     <Reference Include="Hkdf, Version=0.8.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Hkdf.0.8.3\lib\netstandard1.3\Hkdf.dll</HintPath>
     </Reference>
@@ -165,7 +168,6 @@
   <ItemGroup>
     <Compile Include="AccessoriesController.cs" />
     <Compile Include="Constants.cs" />
-    <Compile Include="Crypto\EdsaSigner.cs" />
     <Compile Include="HeaderChangeMiddleware.cs" />
     <Compile Include="IdentifyController.cs" />
     <Compile Include="PairingsController.cs" />
@@ -193,6 +195,9 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Crypto\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
