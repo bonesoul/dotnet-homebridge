@@ -1,4 +1,5 @@
 ﻿//using AronParker.Hkdf;
+using ColdBear.ConsoleApp.Crypto;
 using Org.BouncyCastle.Crypto.Agreement.Kdf;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Engines;
@@ -11,6 +12,7 @@ using SecurityDriven.Inferno.Kdf;
 using SRP;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -46,8 +48,8 @@ namespace ColdBear.ConsoleApp
 
             if (state == 1)
             {
-                Debug.WriteLine("Pair Setup starting");
-                Debug.WriteLine("SRP Start Response");
+                Console.WriteLine("Pair Setup Step 1/6");
+                Console.WriteLine("SRP Start Response");
 
                 Random randomNumber = new Random();
                 int code = randomNumber.Next(100, 999);
@@ -108,7 +110,8 @@ namespace ColdBear.ConsoleApp
             }
             else if (state == 3)
             {
-                Debug.WriteLine("SRP Verify Request");
+                Console.WriteLine("Pair Setup Step 3/6");
+                Console.WriteLine("SRP Verify Request");
 
                 var iOSPublicKey = parts.GetType(Constants.PublicKey); // A 
                 var iOSProof = parts.GetType(Constants.Proof); // M1
@@ -180,6 +183,7 @@ namespace ColdBear.ConsoleApp
             }
             else if (state == 5)
             {
+                Debug.WriteLine("Pair Setup Step 5/6");
                 Debug.WriteLine("Exchange Response");
 
                 var iOSPublicKey = parts.GetType(Constants.EncryptedData); // A 
@@ -211,16 +215,10 @@ namespace ColdBear.ConsoleApp
                 byte[] calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);
 
-                // Copy calculatedMAC to authTag
-                //if (!Arrays.constantTimeAreEqual(calculatedMAC, receivedMAC))
-                //{
-                //    throw new TlsFatalAlert(AlertDescription.bad_record_mac);
-                //}
-
                 byte[] output = new byte[messageData.Length];
                 chacha.ProcessBytes(messageData, 0, messageData.Length, output, 0);
 
-                Debug.WriteLine("Decoded Text");
+                Debug.WriteLine("Decoded TLV");
                 Debug.WriteLine(ByteArrayToString(output));
 
                 var subData = TLVParser.Parse(output);
@@ -229,10 +227,83 @@ namespace ColdBear.ConsoleApp
                 byte[] ltpk = subData.GetType(Constants.PublicKey);
                 byte[] proof = subData.GetType(Constants.Signature);
 
-                // username and ltpk should be saved!!!
-                //
+                Console.WriteLine("iOSDeviceInfo");
+                Console.WriteLine($"Username [{username.Length}]: {Encoding.UTF8.GetString(username)}");
+                Console.WriteLine($"LTPK [{ltpk.Length}]: {ByteArrayToString(ltpk)}");
+                Console.WriteLine($"Proof [{proof.Length}]: {ByteArrayToString(proof)}");
 
-                Console.WriteLine("Step 4/6 is complete."); 
+                LiteDB.LiteDatabase database = new LiteDB.LiteDatabase("Filename=Hap.db");
+
+                var pairingsCollection = database.GetCollection("pairings");
+
+                var pairing = new LiteDB.BsonDocument();
+                pairing.Add("identifier", new LiteDB.BsonValue(ltpk));
+                pairingsCollection.Insert(pairing);
+
+                Console.WriteLine("Step 5/6 is complete.");
+
+                Console.WriteLine("Pair Setup Step 6/6");
+                Console.WriteLine("Response Generation");
+
+                g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Accessory-Sign-Info"));
+                key = g.GetBytes(32);
+
+                byte[] publicKey = Ed25519.PublicKey(server_b);
+
+                byte[] material = key.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(publicKey).ToArray();
+
+                byte[] signingProof = Ed25519.Signature(material, server_b, publicKey);
+
+                Console.WriteLine("AccessoryDeviceInfo");
+                Console.WriteLine($"Username [{Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().Length}]: {Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper()}");
+                Console.WriteLine($"LTPK [{publicKey.Length}]: {ByteArrayToString(publicKey)}");
+                Console.WriteLine($"Proof [{signingProof.Length}]: {ByteArrayToString(signingProof)}");
+
+                TLV encoder = new TLV();
+                encoder.AddType(Constants.Identifier, Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString()));
+                encoder.AddType(Constants.PublicKey, server_B.ToBytes());
+                encoder.AddType(Constants.Signature, signingProof);
+
+                byte[] plaintext = TLVParser.Serialise(encoder);
+
+                chacha = new ChaChaEngine(20);
+                parameters = new ParametersWithIV(new KeyParameter(key), Encoding.UTF8.GetBytes("PS-Msg06"));
+                chacha.Init(true, parameters);
+
+                macKey = InitRecordMAC(chacha);
+
+                byte[] ciphertext = new byte[plaintext.Length];
+                chacha.ProcessBytes(plaintext, 0, plaintext.Length, ciphertext, 0);
+
+                poly = new Poly1305();
+                poly.Init(macKey);
+
+                poly.BlockUpdate(messageData, 0, messageData.Length);
+
+                poly.BlockUpdate(BitConverter.GetBytes((long)messageData.Length), 0, 8);
+
+                calculatedMAC = new byte[poly.GetMacSize()];
+                poly.DoFinal(calculatedMAC, 0);
+
+                byte[] ret = new byte[ciphertext.Length + 16];
+                Array.Copy(ciphertext, 0, ret, 0, ciphertext.Length);
+                Array.Copy(calculatedMAC, 0, ret, ciphertext.Length, 16);
+
+                TLV responseTLV = new TLV();
+                responseTLV.AddType(Constants.State, 6);
+                responseTLV.AddType(Constants.EncryptedData, ret);
+
+                output = TLVParser.Serialise(responseTLV);
+
+                ByteArrayContent content = new ByteArrayContent(output);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                Console.WriteLine("Step 6/6 is complete.");
+
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = content
+                };
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
