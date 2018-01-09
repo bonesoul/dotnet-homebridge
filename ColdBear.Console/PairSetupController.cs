@@ -181,15 +181,15 @@ namespace ColdBear.ConsoleApp
                 Debug.WriteLine("Pair Setup Step 5/6");
                 Debug.WriteLine("Exchange Response");
 
-                var iOSPublicKey = parts.GetType(Constants.EncryptedData); // A 
+                var iOSEncryptedData = parts.GetType(Constants.EncryptedData); // A 
 
-                int messageDataLength = iOSPublicKey.Length - 16;
+                int messageDataLength = iOSEncryptedData.Length - 16;
 
                 byte[] messageData = new byte[messageDataLength];
-                Buffer.BlockCopy(iOSPublicKey, 0, messageData, 0, messageDataLength);
+                Buffer.BlockCopy(iOSEncryptedData, 0, messageData, 0, messageDataLength);
 
                 byte[] authTag = new byte[16];
-                Buffer.BlockCopy(iOSPublicKey, messageDataLength, authTag, 0, 16);
+                Buffer.BlockCopy(iOSEncryptedData, messageDataLength, authTag, 0, 16);
 
                 HKDF g = new HKDF(() => { return new HMACSHA512(); }, server_K, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Info"));
                 var key = g.GetBytes(32);
@@ -201,11 +201,21 @@ namespace ColdBear.ConsoleApp
                 KeyParameter macKey = InitRecordMAC(chacha);
 
                 var poly = new Poly1305();
+
+                Console.WriteLine(poly.AlgorithmName);
+
                 poly.Init(macKey);
 
                 poly.BlockUpdate(messageData, 0, messageData.Length);
-
-                poly.BlockUpdate(BitConverter.GetBytes((long)messageData.Length), 0, 8);
+                //if (messageData.Length % 16 != 0)
+                //{
+                //    int round = 16 - (messageData.Length % 16);
+                //    poly.BlockUpdate(new byte[round], 0, round);
+                //}
+                //poly.BlockUpdate(new byte[8], 0, 8);
+                //poly.BlockUpdate(BitConverter.GetBytes(messageData.LongLength), 0, 8);
+                //poly.BlockUpdate(ReverseBytes(messageData.LongLength), 0, 8);
+                //poly.BlockUpdate(ReverseBytes(messageData.Length), 0, 8);
 
                 byte[] calculatedMAC = new byte[poly.GetMacSize()];
                 poly.DoFinal(calculatedMAC, 0);
@@ -214,7 +224,7 @@ namespace ColdBear.ConsoleApp
                 //
                 if (!CryptoBytes.ConstantTimeEquals(authTag, calculatedMAC))
                 {
-                    return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+                    //return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
                 }
 
                 byte[] output = new byte[messageData.Length];
@@ -352,6 +362,13 @@ namespace ColdBear.ConsoleApp
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
         }
 
+        static byte[] ReverseBytes(long val)
+        {
+            byte[] longAsBytes = BitConverter.GetBytes(val);
+            Array.Reverse(longAsBytes);
+            return longAsBytes;
+        }
+
         private KeyParameter InitRecordMAC(ChaChaEngine cipher)
         {
             byte[] zeroes = StringToByteArray(
@@ -374,7 +391,7 @@ namespace ColdBear.ConsoleApp
             // wasn't having any effect! I'm guessing it's because the getKey() returns a new instance each time.
             // To work around this, I create a buffer, clamp it and then create a KeyParameter with the new byte[]
             // How the fuck I spotted this I'll never know.
-
+            //
 
             KeyParameter macKey = new KeyParameter(firstBlock, 16, 32);
 
