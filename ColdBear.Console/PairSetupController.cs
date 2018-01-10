@@ -200,25 +200,50 @@ namespace ColdBear.ConsoleApp
                 var parameters = new ParametersWithIV(new KeyParameter(outputKey), Encoding.UTF8.GetBytes("PS-Msg05"));
                 chacha.Init(false, parameters);
 
-
                 KeyParameter macKey = InitRecordMAC(chacha);
 
                 var iOSPoly = new Poly1305();
 
                 #region OLD POLY
 
-                bool valid = Sodium.OneTimeAuth.Verify(messageData, authTag, outputKey);
-
                 iOSPoly.Init(macKey);
 
+                // The AAD padding length.
+                //
+                //iOSPoly.BlockUpdate(new byte[4], 0, 4);
+
+                // The ciphertext.
+                //
                 iOSPoly.BlockUpdate(messageData, 0, messageData.Length);
-                if (messageData.Length % 16 != 0)
+
+                // The ciphertext padding length.
+                //
+                if(messageData.Length % 16 != 0)
                 {
-                    int round = 16 - (messageData.Length % 16);
-                    iOSPoly.BlockUpdate(new byte[round], 0, round);
+                    int bytesRequiredForRounding = 16 - (messageData.Length % 16);
+                    iOSPoly.BlockUpdate(new byte[bytesRequiredForRounding], 0, bytesRequiredForRounding);
                 }
+
+                // The length of the AAD
+                //
                 iOSPoly.BlockUpdate(new byte[8], 0, 8);
+
+                // The length of the ciphertext
+                //
                 iOSPoly.BlockUpdate(ReverseBytes(messageData.LongLength), 0, 8);
+
+                //bool valid = Sodium.OneTimeAuth.Verify(messageData, authTag, outputKey);
+
+                //iOSPoly.Init(macKey);
+
+                //iOSPoly.BlockUpdate(messageData, 0, messageData.Length);
+                //if (messageData.Length % 16 != 0)
+                //{
+                //    int round = 16 - (messageData.Length % 16);
+                //    iOSPoly.BlockUpdate(new byte[round], 0, round);
+                //}
+                //iOSPoly.BlockUpdate(new byte[8], 0, 8);
+                //iOSPoly.BlockUpdate(ReverseBytes(messageData.LongLength), 0, 8);
 
                 byte[] calculatedMAC = new byte[iOSPoly.GetMacSize()];
                 iOSPoly.DoFinal(calculatedMAC, 0);
@@ -333,7 +358,7 @@ namespace ColdBear.ConsoleApp
 
                 byte[] ciphertext = new byte[plaintext.Length];
                 chacha.ProcessBytes(plaintext, 0, plaintext.Length, ciphertext, 0);
-                
+
                 var poly = new Poly1305();
                 iOSPoly.Init(macKey);
 
