@@ -1,9 +1,10 @@
-﻿using Chaos.NaCl;
+﻿//using Chaos.NaCl;
+using Chaos.NaCl;
+using CryptoSysAPI;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
-using Org.BouncyCastle.Crypto.Tls;
 using Org.BouncyCastle.Math;
 using SecurityDriven.Inferno.Kdf;
 using SRP;
@@ -197,11 +198,187 @@ namespace ColdBear.ConsoleApp
                 var hkdfEncKey = outputKey;
 
 
+                //var testKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
 
+                var testKey = StringToByteArray("bd f0 4a a9 5c e4 de 89 95 b1 4b b6 a1 8f ec af 26 47 8f 50 c0 54 f5 63 db c0 a2 1e 26 15 72 aa");
+
+                var testNonce = StringToByteArray("00 00 00 00 01 02 03 04 05 06 07 08");
+
+                var testCipherText = StringToByteArray("64 a0 86 15 75 86 1a f4 60 f0 62 c7 9b e6 43 bd" +
+  "5e 80 5c fd 34 5c f3 89 f1 08 67 0a c7 6c 8c b2" +
+  "4c 6c fc 18 75 5d 43 ee a0 9e e9 4e 38 2d 26 b0" +
+  "bd b7 b7 3c 32 1b 01 00 d4 f0 3b 7f 35 58 94 cf" +
+  "33 2f 83 0e 71 0b 97 ce 98 c8 a8 4a bd 0b 94 81" +
+  "14 ad 17 6e 00 8d 33 bd 60 f9 82 b1 ff 37 c8 55" +
+  "97 97 a0 6e f4 f0 ef 61 c1 86 32 4e 2b 35 06 38" +
+  "36 06 90 7b 6a 7c 02 b0 f9 f6 15 7b 53 c8 67 e4" +
+  "b9 16 6c 76 7b 80 4d 46 a5 9b 52 16 cd e7 a4 e9" +
+  "90 40 c5 a4 04 33 22 5e e2 82 a1 b0 a0 6c 52 3e" +
+  "af 45 34 d7 f8 3f a1 15 5b 00 47 71 8c bc 54 6a" +
+  "0d 07 2b 04 b3 56 4e ea 1b 42 22 73 f5 48 27 1a" +
+  "0b b2 31 60 53 fa 76 99 19 55 eb d6 31 59 43 4e" +
+  "ce bb 4e 46 6d ae 5a 10 73 a6 72 76 27 09 7a 10" +
+  "49 e6 17 d9 1d 36 10 94 fa 68 f0 ff 77 98 71 30" +
+  "30 5b ea ba 2e da 04 df 99 7b 71 4d 6c 6f 2c 29" +
+  "a6 ad 5c b4 02 2b 02 70 9b");
+
+
+
+                var tag1 = Aead.Mac(testKey, testNonce, testCipherText, Aead.Algorithm.Chacha20_Poly1305);
+                Console.WriteLine("Tag: " + ByteArrayToString(tag1));
+                Console.WriteLine("");
+
+                byte[] pt, ct, key, nonce, tag, aad;
+                key = Cnv.FromHex("1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0");
+                ct = Cnv.FromHex("64a0861575861af460f062c79be643bd5e805cfd345cf389f108670ac76c8cb24c6cfc18755d43eea09ee94e382d26b0bdb7b73c321b0100d4f03b7f355894cf332f830e710b97ce98c8a84abd0b948114ad176e008d33bd60f982b1ff37c8559797a06ef4f0ef61c186324e2b3506383606907b6a7c02b0f9f6157b53c867e4b9166c767b804d46a59b5216cde7a4e99040c5a40433225ee282a1b0a06c523eaf4534d7f83fa1155b0047718cbc546a0d072b04b3564eea1b422273f548271a0bb2316053fa76991955ebd63159434ecebb4e466dae5a1073a6727627097a1049e617d91d361094fa68f0ff77987130305beaba2eda04df997b714d6c6f2c29a6ad5cb4022b02709b");
+                nonce = Cnv.FromHex("000000000102030405060708");
+                aad = Cnv.FromHex("f33388860000000000004e91");
+                tag = Cnv.FromHex("eead9d67890cbb22392336fea1851f38");
+                pt = Aead.Decrypt(ct, key, nonce, aad, tag, Aead.Algorithm.Chacha20_Poly1305);
+                Console.WriteLine("P:" + Cnv.ToHex(pt));
+                // This is UTF-8-encoded text, so display it
+                string Str = System.Text.Encoding.UTF8.GetString(pt);
+                Console.WriteLine(Str);
+
+                /*
+                var testKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
+                var nonce = StringToByteArray("00 00 00 00 01 02 03 04 05 06 07 08");
+
+                var testChacha = new ChaCha20Poly1305();
+                var testParameters = new ParametersWithIV(new KeyParameter(testKey), nonce);
+                testChacha.Init(false, testParameters);
+
+                KeyParameter testMacKey = InitRecordMAC(testChacha);
+
+                Console.WriteLine("MAC From Test Vectors");
+                Console.WriteLine(ByteArrayToString(testMacKey.GetKey()));
+
+                var testCipherText = StringToByteArray("64 a0 86 15 75 86 1a f4 60 f0 62 c7 9b e6 43 bd" +
+  "5e 80 5c fd 34 5c f3 89 f1 08 67 0a c7 6c 8c b2" +
+  "4c 6c fc 18 75 5d 43 ee a0 9e e9 4e 38 2d 26 b0" +
+  "bd b7 b7 3c 32 1b 01 00 d4 f0 3b 7f 35 58 94 cf" +
+  "33 2f 83 0e 71 0b 97 ce 98 c8 a8 4a bd 0b 94 81" +
+  "14 ad 17 6e 00 8d 33 bd 60 f9 82 b1 ff 37 c8 55" +
+  "97 97 a0 6e f4 f0 ef 61 c1 86 32 4e 2b 35 06 38" +
+  "36 06 90 7b 6a 7c 02 b0 f9 f6 15 7b 53 c8 67 e4" +
+  "b9 16 6c 76 7b 80 4d 46 a5 9b 52 16 cd e7 a4 e9" +
+  "90 40 c5 a4 04 33 22 5e e2 82 a1 b0 a0 6c 52 3e" +
+  "af 45 34 d7 f8 3f a1 15 5b 00 47 71 8c bc 54 6a" +
+  "0d 07 2b 04 b3 56 4e ea 1b 42 22 73 f5 48 27 1a" +
+  "0b b2 31 60 53 fa 76 99 19 55 eb d6 31 59 43 4e" +
+  "ce bb 4e 46 6d ae 5a 10 73 a6 72 76 27 09 7a 10" +
+  "49 e6 17 d9 1d 36 10 94 fa 68 f0 ff 77 98 71 30" +
+  "30 5b ea ba 2e da 04 df 99 7b 71 4d 6c 6f 2c 29" +
+  "a6 ad 5c b4 02 2b 02 70 9b");
+
+
+                var testPoly = new ChaCha20Poly1305.Poly1305();
+
+                testPoly.Init(new KeyParameter(testKey));
+
+                var aad = StringToByteArray("f3 33 88 86 00 00 00 00 00 00 4e 91");
+
+                var polyInput = new byte[0];
+
+                var aadPadding = new byte[0];
+                var cipherTextPadding = new byte[0];
+
+                if (aad.Length % 16 != 0)
+                {
+                    int bytesRequiredForRounding = 16 - (aad.Length % 16);
+                    aadPadding = new byte[bytesRequiredForRounding];
+                }
+
+                if (testCipherText.Length % 16 != 0)
+                {
+                    int bytesRequiredForRounding = 16 - (testCipherText.Length % 16);
+                    cipherTextPadding = new byte[bytesRequiredForRounding];
+                }
+
+                //polyInput = aad.Concat(aadPadding).Concat(testCipherText).Concat(cipherTextPadding).Concat(BitConverter.GetBytes(aad.LongLength)).Concat(BitConverter.GetBytes(testCipherText.LongLength)).ToArray();
+                polyInput = aad.Concat(aadPadding).Concat(testCipherText).Concat(cipherTextPadding).Concat(BitConverter.GetBytes(aad.LongLength)).Concat(BitConverter.GetBytes(testCipherText.LongLength)).ToArray();
+
+                var expectedPolyInput = StringToByteArray("f3 33 88 86 00 00 00 00 00 00 4e 91 00 00 00 00" +
+  "64 a0 86 15 75 86 1a f4 60 f0 62 c7 9b e6 43 bd" +
+  "5e 80 5c fd 34 5c f3 89 f1 08 67 0a c7 6c 8c b2" +
+  "4c 6c fc 18 75 5d 43 ee a0 9e e9 4e 38 2d 26 b0" +
+  "bd b7 b7 3c 32 1b 01 00 d4 f0 3b 7f 35 58 94 cf" +
+  "33 2f 83 0e 71 0b 97 ce 98 c8 a8 4a bd 0b 94 81" +
+  "14 ad 17 6e 00 8d 33 bd 60 f9 82 b1 ff 37 c8 55" +
+  "97 97 a0 6e f4 f0 ef 61 c1 86 32 4e 2b 35 06 38" +
+  "36 06 90 7b 6a 7c 02 b0 f9 f6 15 7b 53 c8 67 e4" +
+  "b9 16 6c 76 7b 80 4d 46 a5 9b 52 16 cd e7 a4 e9" +
+  "90 40 c5 a4 04 33 22 5e e2 82 a1 b0 a0 6c 52 3e" +
+  "af 45 34 d7 f8 3f a1 15 5b 00 47 71 8c bc 54 6a" +
+  "0d 07 2b 04 b3 56 4e ea 1b 42 22 73 f5 48 27 1a" +
+  "0b b2 31 60 53 fa 76 99 19 55 eb d6 31 59 43 4e" +
+  "ce bb 4e 46 6d ae 5a 10 73 a6 72 76 27 09 7a 10" +
+  "49 e6 17 d9 1d 36 10 94 fa 68 f0 ff 77 98 71 30" +
+  "30 5b ea ba 2e da 04 df 99 7b 71 4d 6c 6f 2c 29" +
+  "a6 ad 5c b4 02 2b 02 70 9b 00 00 00 00 00 00 00" +
+  "0c 00 00 00 00 00 00 00 09 01 00 00 00 00 00 00");
+
+                var polyMatchesExpectedValue = polyInput.SequenceEqual(expectedPolyInput);
+
+                Debug.WriteLine("Test Poly AEAD Input");
+                Debug.WriteLine(ByteArrayToString(polyInput));
+
+                testPoly.BlockUpdate(polyInput, 0, polyInput.Length);
+
+                byte[] testCalculatedTag = new byte[testPoly.GetMacSize()];
+                testPoly.DoFinal(testCalculatedTag, 0);
+
+                Debug.WriteLine("Test Tag");
+                Debug.WriteLine(ByteArrayToString(testCalculatedTag));
+
+                Debug.Write("H");
+                */
+
+                // *****************************************
+                // NaCl test code
+                //
+                /*
+                var testKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
+                var testNonce = StringToByteArray("01 02 03 04 05 06 07 08");
+
+                var testChacha = new ChaChaEngine(20);
+                var testParameters = new ParametersWithIV(new KeyParameter(testKey), testNonce);
+                testChacha.Init(false, testParameters);
+
+                KeyParameter testMacKey = InitRecordMAC(testChacha);
+
+                var testCipherText = StringToByteArray("64 a0 86 15 75 86 1a f4 60 f0 62 c7 9b e6 43 bd" +
+  "5e 80 5c fd 34 5c f3 89 f1 08 67 0a c7 6c 8c b2" +
+  "4c 6c fc 18 75 5d 43 ee a0 9e e9 4e 38 2d 26 b0" +
+  "bd b7 b7 3c 32 1b 01 00 d4 f0 3b 7f 35 58 94 cf" +
+  "33 2f 83 0e 71 0b 97 ce 98 c8 a8 4a bd 0b 94 81" +
+  "14 ad 17 6e 00 8d 33 bd 60 f9 82 b1 ff 37 c8 55" +
+  "97 97 a0 6e f4 f0 ef 61 c1 86 32 4e 2b 35 06 38" +
+  "36 06 90 7b 6a 7c 02 b0 f9 f6 15 7b 53 c8 67 e4" +
+  "b9 16 6c 76 7b 80 4d 46 a5 9b 52 16 cd e7 a4 e9" +
+  "90 40 c5 a4 04 33 22 5e e2 82 a1 b0 a0 6c 52 3e" +
+  "af 45 34 d7 f8 3f a1 15 5b 00 47 71 8c bc 54 6a" +
+  "0d 07 2b 04 b3 56 4e ea 1b 42 22 73 f5 48 27 1a" +
+  "0b b2 31 60 53 fa 76 99 19 55 eb d6 31 59 43 4e" +
+  "ce bb 4e 46 6d ae 5a 10 73 a6 72 76 27 09 7a 10" +
+  "49 e6 17 d9 1d 36 10 94 fa 68 f0 ff 77 98 71 30" +
+  "30 5b ea ba 2e da 04 df 99 7b 71 4d 6c 6f 2c 29" +
+  "a6 ad 5c b4 02 2b 02 70 9b");
+
+                var testReceivedTag = StringToByteArray("ee ad 9d 67 89 0c bb 22 39 23 36 fe a1 85 1f 38");
+                var testChaChaKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
+                bool verified = OneTimeAuth.Poly1305.Verify(testReceivedTag, testCipherText, testChaChaKey);
+                var testLongNonce = StringToByteArray("00 00 00 00 01 02 03 04 05 06 07 08");
+                var decryptedTest = XSalsa20Poly1305.TryDecrypt(testCipherText, testKey, testLongNonce);
+
+                Console.WriteLine(verified);
+                */
+
+                // COSE
 
                 //**************************************
-                // TEST CODE FOR CHACHA20-POLY1305
-
+                // TEST CODE FOR BouncyCastle POLY1305
+                /*
                 var testKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
                 var nonce = StringToByteArray("01 02 03 04 05 06 07 08");
 
@@ -233,7 +410,7 @@ namespace ColdBear.ConsoleApp
   "a6 ad 5c b4 02 2b 02 70 9b");
 
 
-                var testPoly = new Poly1305();
+                var testPoly = new Org.BouncyCastle.Crypto.Macs.Poly1305();
 
                 testPoly.Init(testMacKey);
 
@@ -278,58 +455,74 @@ namespace ColdBear.ConsoleApp
   "a6 ad 5c b4 02 2b 02 70 9b 00 00 00 00 00 00 00" +
   "0c 00 00 00 00 00 00 00 09 01 00 00 00 00 00 00");
 
-                var polyMatchesExpectedValue = polyInput.SequenceEqual(expectedPolyInput); 
+                var polyMatchesExpectedValue = polyInput.SequenceEqual(expectedPolyInput);
 
                 Debug.WriteLine("Test Poly AEAD Input");
                 Debug.WriteLine(ByteArrayToString(polyInput));
 
-                byte[] testCalculatedTag = new byte[testPoly.GetMacSize()];
-                testPoly.BlockUpdate(polyInput, 0, polyInput.Length);
-                testPoly.DoFinal(testCalculatedTag, 0);
+                //byte[] testCalculatedTag = new byte[testPoly.GetMacSize()];
 
-                Debug.WriteLine("Test Tag");
-                Debug.WriteLine(ByteArrayToString(testCalculatedTag));
+                testPoly.BlockUpdate(polyInput, 0, polyInput.Length);
+
+
+                byte[] testCalculatedTag = new byte[100];
+
+                for (int i = 0; i < 84; i++)
+                {
+                    testPoly.DoFinal(testCalculatedTag, i);
+
+                    Debug.WriteLine("Test Tag");
+                    Debug.WriteLine(ByteArrayToString(testCalculatedTag));
+                }
+
+
+
 
                 Debug.Write("H");
-                //// The AAD
-                ////
-                //testPoly.BlockUpdate(aad, 0, aad.Length);
 
-                //// The AAD padding
-                ////
-                //if (aad.Length % 16 != 0)
-                //{
-                //    int bytesRequiredForRounding = 16 - (aad.Length % 16);
-                //    testPoly.BlockUpdate(new byte[bytesRequiredForRounding], 0, bytesRequiredForRounding);
-                //}
+                testPoly = new Org.BouncyCastle.Crypto.Macs.Poly1305();
 
-                //// The ciphertext.
-                ////
-                //testPoly.BlockUpdate(testCipherText, 0, testCipherText.Length);
+                testPoly.Init(testMacKey);
 
-                //// The ciphertext padding length.
-                ////
-                //if (testCipherText.Length % 16 != 0)
-                //{
-                //    int bytesRequiredForRounding = 16 - (testCipherText.Length % 16);
-                //    testPoly.BlockUpdate(new byte[bytesRequiredForRounding], 0, bytesRequiredForRounding);
-                //}
+                // The AAD
+                //
+                testPoly.BlockUpdate(aad, 0, aad.Length);
 
-                //// The length of the AAD
-                ////
-                //testPoly.BlockUpdate(BitConverter.GetBytes(aad.LongLength), 0, 8);
+                // The AAD padding
+                //
+                if (aad.Length % 16 != 0)
+                {
+                    int bytesRequiredForRounding = 16 - (aad.Length % 16);
+                    testPoly.BlockUpdate(new byte[bytesRequiredForRounding], 0, bytesRequiredForRounding);
+                }
 
-                //// The length of the ciphertext
-                ////
-                //testPoly.BlockUpdate(BitConverter.GetBytes(testCipherText.LongLength), 0, 8);
+                // The ciphertext.
+                //
+                testPoly.BlockUpdate(testCipherText, 0, testCipherText.Length);
 
-                //// Compute the final key
-                ////
-                //byte[] testCalculatedTag = new byte[testPoly.GetMacSize()];
-                //testPoly.DoFinal(testCalculatedTag, 0);
+                // The ciphertext padding length.
+                //
+                if (testCipherText.Length % 16 != 0)
+                {
+                    int bytesRequiredForRounding = 16 - (testCipherText.Length % 16);
+                    testPoly.BlockUpdate(new byte[bytesRequiredForRounding], 0, bytesRequiredForRounding);
+                }
 
-                //Debug.WriteLine("Test Tag");
-                //Debug.WriteLine(ByteArrayToString(testCalculatedTag));
+                // The length of the AAD
+                //
+                testPoly.BlockUpdate(BitConverter.GetBytes(aad.LongLength), 0, 8);
+
+                // The length of the ciphertext
+                //
+                testPoly.BlockUpdate(BitConverter.GetBytes(testCipherText.LongLength), 0, 8);
+
+                // Compute the final key
+                //
+                byte[] alternativeTestCalculatedTag = new byte[testPoly.GetMacSize()];
+                testPoly.DoFinal(alternativeTestCalculatedTag, 0);
+
+                Debug.WriteLine("Alternative Test Tag");
+                Debug.WriteLine(ByteArrayToString(alternativeTestCalculatedTag));
 
                 // Decrypt
                 //
@@ -339,7 +532,8 @@ namespace ColdBear.ConsoleApp
                 Debug.WriteLine("Decrypted Test CipherText");
                 Debug.WriteLine(ByteArrayToString(testOutput));
 
-                //
+                */
+                // END OF BouncyCastle Poly1305 Test Code
                 //********************************************
 
 
@@ -355,10 +549,11 @@ namespace ColdBear.ConsoleApp
 
                 KeyParameter macKey = InitRecordMAC(chacha);
 
-                var iOSPoly = new Poly1305();
+                var iOSPoly = new Org.BouncyCastle.Crypto.Macs.Poly1305();
 
                 #region OLD POLY
 
+                /*
                 iOSPoly.Init(macKey);
 
                 // The AAD padding length.
@@ -393,12 +588,12 @@ namespace ColdBear.ConsoleApp
                 // Verify this calculatedMac matches the iOS authTag.
                 // This is failing, which implies the way I'm generating the MAC is incorrect.
                 //
-                bool isAuthTagValid = CryptoBytes.ConstantTimeEquals(authTag, calculatedMAC);
+                //bool isAuthTagValid = CryptoBytes.ConstantTimeEquals(authTag, calculatedMAC);
                 //if (!isAuthTagValid)
                 //{
                 //    return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
                 //}
-
+                */
                 #endregion
 
                 byte[] output = new byte[messageData.Length];
@@ -501,8 +696,8 @@ namespace ColdBear.ConsoleApp
                 byte[] ciphertext = new byte[plaintext.Length];
                 chacha.ProcessBytes(plaintext, 0, plaintext.Length, ciphertext, 0);
 
-                var poly = new Poly1305();
-                iOSPoly.Init(macKey);
+                //var poly = new Poly1305();
+                //iOSPoly.Init(macKey);
 
                 //iOSPoly.BlockUpdate
 
@@ -552,6 +747,48 @@ namespace ColdBear.ConsoleApp
             return bytes;
         }
 
+        private KeyParameter InitRecordMAC(ChaCha20Poly1305 cipher)
+        {
+            byte[] zeroes = StringToByteArray(
+           "00000000000000000000000000000000"
+           + "00000000000000000000000000000000"
+           + "00000000000000000000000000000000"
+           + "00000000000000000000000000000000");
+
+            byte[] firstBlock = new byte[64];
+            cipher.ProcessBytes(zeroes, 0, firstBlock.Length, firstBlock, 0);
+
+            Console.WriteLine("ChaCha OutBytes");
+            Console.WriteLine(ByteArrayToString(firstBlock));
+
+            // NOTE: The BC implementation puts 'r' after 'k'
+            //Array.Copy(firstBlock, 0, firstBlock, 32, 16);
+            //KeyParameter macKey = new KeyParameter(firstBlock, 16, 32);
+            //Poly1305KeyGenerator.clamp(macKey.getKey());
+
+            // 8th January, 2018 21:05
+            //
+            // The above code is from the github HAP-Java implementation. The problem was that the clamp() operator
+            // wasn't having any effect! I'm guessing it's because the getKey() returns a new instance each time.
+            // To work around this, I create a buffer, clamp it and then create a KeyParameter with the new byte[]
+            // How the fuck I spotted this I'll never know.
+            //
+
+            KeyParameter macKey = new KeyParameter(firstBlock, 0, 32);
+
+            var key = macKey.GetKey();
+
+            //Console.WriteLine(ByteArrayToString(key));
+
+            Poly1305KeyGenerator.Clamp(key);
+
+            //Console.WriteLine(ByteArrayToString(key));
+
+            Poly1305KeyGenerator.CheckKey(key);
+
+            return new KeyParameter(key);
+        }
+
         private KeyParameter InitRecordMAC(ChaChaEngine cipher)
         {
             byte[] zeroes = StringToByteArray(
@@ -585,11 +822,48 @@ namespace ColdBear.ConsoleApp
 
             //Console.WriteLine(ByteArrayToString(key));
 
-            //Poly1305KeyGenerator.Clamp(key);
+            Poly1305KeyGenerator.Clamp(key);
 
             //Console.WriteLine(ByteArrayToString(key));
 
-            //Poly1305KeyGenerator.CheckKey(key);
+            Poly1305KeyGenerator.CheckKey(key);
+
+            return new KeyParameter(key);
+        }
+
+        private KeyParameter InitRecordMACWithoutClamp(ChaChaEngine cipher)
+        {
+            byte[] zeroes = StringToByteArray(
+           "00000000000000000000000000000000"
+           + "00000000000000000000000000000000"
+           + "00000000000000000000000000000000"
+           + "00000000000000000000000000000000");
+
+            byte[] firstBlock = new byte[64];
+            cipher.ProcessBytes(zeroes, 0, firstBlock.Length, firstBlock, 0);
+
+            Console.WriteLine("ChaCha OutBytes");
+            Console.WriteLine(ByteArrayToString(firstBlock));
+
+            // NOTE: The BC implementation puts 'r' after 'k'
+            //Array.Copy(firstBlock, 0, firstBlock, 32, 16);
+            //KeyParameter macKey = new KeyParameter(firstBlock, 16, 32);
+            //Poly1305KeyGenerator.clamp(macKey.getKey());
+
+            // 8th January, 2018 21:05
+            //
+            // The above code is from the github HAP-Java implementation. The problem was that the clamp() operator
+            // wasn't having any effect! I'm guessing it's because the getKey() returns a new instance each time.
+            // To work around this, I create a buffer, clamp it and then create a KeyParameter with the new byte[]
+            // How the fuck I spotted this I'll never know.
+            //
+
+            KeyParameter macKey = new KeyParameter(firstBlock, 0, 32);
+
+            var key = macKey.GetKey();
+
+            Console.WriteLine("Poly1305 Key");
+            Console.WriteLine(ByteArrayToString(key));
 
             return new KeyParameter(key);
         }
