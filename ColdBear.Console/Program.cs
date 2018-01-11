@@ -1,13 +1,16 @@
 ﻿using Bonjour;
+using HttpMachine;
 using Microsoft.Owin.Hosting;
 using System;
+using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 
 namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A2:22:3D:E3:CE:D6";
+        public const string ID = "A4:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
@@ -37,82 +40,88 @@ namespace ColdBear.ConsoleApp
             });
             t1.Start();
 
-            string baseAddress = "http://*:51826/";
+            //string baseAddress = "http://*:51826/";
 
-            StartOptions options = new StartOptions();
-            options.Urls.Add("http://*:51826");
+            //StartOptions options = new StartOptions();
+            //options.Urls.Add("http://*:51826");
 
-            using (WebApp.Start(baseAddress))
-            {
-                Console.WriteLine("Server started....");
-                Console.WriteLine("Press Enter to quit.");
-                Console.ReadLine();
-            }
-
-            //var t2 = new Thread(() =>
+            //using (WebApp.Start(baseAddress))
             //{
-            //    IPAddress address = IPAddress.Any;
-            //    IPEndPoint port = new IPEndPoint(address, 51826); //port 9999
+            //    Console.WriteLine("Server started....");
+            //    Console.WriteLine("Press Enter to quit.");
+            //    Console.ReadLine();
+            //}
 
-            //    TcpListener listener = new TcpListener(port);
+            var t2 = new Thread(() =>
+            {
+                IPAddress address = IPAddress.Any;
+                IPEndPoint port = new IPEndPoint(address, 51826); //port 9999
 
-            //    listener.Start();
+                TcpListener listener = new TcpListener(port);
 
-            //    Console.WriteLine("--Server Started--");
+                listener.Start();
 
-            //    while (true) //loop forever
-            //    {
-            //        Console.WriteLine("Waiting for New Controller to connect");
-            //        Socket sock = listener.AcceptSocket();
+                Console.WriteLine("--Server Started--");
 
-            //        Console.WriteLine($"Controller has connected on {sock.Handle}!");
+                while (true) //loop forever
+                {
+                    Console.WriteLine("Waiting for New Controller to connect");
+                    Socket sock = listener.AcceptSocket();
 
-            //        byte[] buffer = new byte[32];
+                    Console.WriteLine($"Controller has connected on {sock.Handle}!");
 
-            //        string incomingMessage = "";
+                    byte[] buffer = new byte[32];
 
-            //        //read:
-            //        while (sock.Available > 0)
-            //        {
-            //            int gotBytes = sock.Receive(buffer);
-            //            incomingMessage += Encoding.ASCII.GetString(buffer, 0, gotBytes);
-            //        }
+                    var handler = new HttpParserDelegate();
+                    var parser = new HttpParser(handler);
+                    
+                    while (sock.Available > 0)
+                    {
+                        int gotBytes = sock.Receive(buffer);
+                        parser.Execute(new ArraySegment<byte>(buffer));
+                    }
 
-            //        //debugging:
-            //        //Console.WriteLine(incomingMessage);
+                    //debugging:
+                    //Console.WriteLine(incomingMessage);
 
-            //        //Now check whether its a GET or a POST
+                    //Now check whether its a GET or a POST
 
-            //        if (incomingMessage.ToUpper().Contains("POST") && incomingMessage.ToUpper().Contains("/Pair-Setup")) //a search has been asked for
-            //        {
-            //            Console.WriteLine("Query Has Been Received");
+                    //while ((bytesRead = inputStream.Read(buffer, 0, buffer.Length)) > 0)
+                    //    if (bytesRead != )
+                    //        goto error; /* or whatever you like */
 
-            //            //extracting the post data
+                    // ensure you get the last callbacks.
+                    //parser.Execute(default(ArraySegment<byte>));
 
-            //            string htmlPostData = incomingMessage.Substring(incomingMessage.IndexOf("songName"));
+                    //if (incomingMessage.ToUpper().Contains("POST") && incomingMessage.ToUpper().Contains("/Pair-Setup")) //a search has been asked for
+                    //{
+                    //    Console.WriteLine("Query Has Been Received");
 
-            //            string[] parameters = htmlPostData.Split('&');
+                    //    //extracting the post data
 
-            //            string[] inputs = new string[5];
+                    //    string htmlPostData = incomingMessage.Substring(incomingMessage.IndexOf("songName"));
 
-            //            for (int i = 0; i < parameters.Length; i++)
-            //            {
-            //                inputs[i] = (parameters[i].Split('='))[1];
-            //                inputs[i] = inputs[i].Replace('+', ' ');
-            //            }
-            //        }
-            //    }
-            //});
+                    //    string[] parameters = htmlPostData.Split('&');
 
-            //t2.Start();
+                    //    string[] inputs = new string[5];
+
+                    //    for (int i = 0; i < parameters.Length; i++)
+                    //    {
+                    //        inputs[i] = (parameters[i].Split('='))[1];
+                    //        inputs[i] = inputs[i].Replace('+', ' ');
+                    //    }
+                    //}
+                }
+            });
+
+            t2.Start();
 
 
-            //Console.WriteLine("Press any key to terminate");
-            //Console.ReadKey();
+            Console.WriteLine("Press any key to terminate");
+            Console.ReadKey();
 
-            //context.
             t1.Join();
-            //t2.Join();
+            t2.Join();
         }
 
         private static void Mgr_ServiceRegistered(DNSSDService service, DNSSDFlags flags, string name, string regtype, string domain)

@@ -33,10 +33,9 @@ namespace ColdBear.ConsoleApp
         private static byte[] server_b;
         private static System.Numerics.BigInteger server_B;
 
-        public async Task<HttpResponseMessage> Post()
+        //public ask<HttpResponseMessage> Post(byte[] body)
+        public HttpResponseMessage Post(byte[] body)
         {
-            var body = await Request.Content.ReadAsByteArrayAsync();
-
             Debug.WriteLine($"Length of input is {body.Length} bytes");
 
             var parts = TLVParser.Parse(body);
