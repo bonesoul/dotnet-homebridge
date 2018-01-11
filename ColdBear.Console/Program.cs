@@ -1,6 +1,7 @@
 ﻿using Bonjour;
 using Microsoft.Owin.Hosting;
 using System;
+using System.Net;
 using System.Threading;
 
 namespace ColdBear.ConsoleApp
@@ -48,6 +49,16 @@ namespace ColdBear.ConsoleApp
                 Console.WriteLine("Press Enter to quit.");
                 Console.ReadLine();
             }
+
+            //HttpListener listener = new HttpListener();
+            //var context = listener.GetContext();
+
+            //var request = context.Request;
+
+
+            //context.
+
+
 
             t.Join();
         }

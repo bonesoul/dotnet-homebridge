@@ -10,6 +10,7 @@ using SecurityDriven.Inferno.Kdf;
 using SRP;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -698,6 +699,8 @@ namespace ColdBear.ConsoleApp
                 RandomNumberGenerator.Create().GetBytes(seed);
 
                 Ed25519.KeyPairFromSeed(out accessoryLTPK, out accessoryLTSK, seed);
+
+                File.WriteAllBytes("PrivateKey", accessoryLTSK);
 
                 var serverUsername = Encoding.UTF8.GetBytes(Program.ID);
 

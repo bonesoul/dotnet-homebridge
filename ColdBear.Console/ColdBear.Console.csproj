@@ -252,6 +252,7 @@
     <Compile Include="HeaderChangeMiddleware.cs" />
     <Compile Include="IdentifyController.cs" />
     <Compile Include="PairingsController.cs" />
+    <Compile Include="PairVerifyController.cs" />
     <Compile Include="PairSetupController.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
