@@ -224,21 +224,26 @@ namespace ColdBear.ConsoleApp
 
 
 
-                var tag1 = Aead.Mac(testKey, testNonce, testCipherText, Aead.Algorithm.Chacha20_Poly1305);
-                Console.WriteLine("Tag: " + ByteArrayToString(tag1));
-                Console.WriteLine("");
+                //var tag1 = Aead.Mac(testKey, testNonce, testCipherText, Aead.Algorithm.Chacha20_Poly1305);
+                //Console.WriteLine("Tag: " + ByteArrayToString(tag1));
+                //Console.WriteLine("");
 
-                byte[] pt, ct, key, nonce, tag, aad;
-                key = Cnv.FromHex("1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0");
-                ct = Cnv.FromHex("64a0861575861af460f062c79be643bd5e805cfd345cf389f108670ac76c8cb24c6cfc18755d43eea09ee94e382d26b0bdb7b73c321b0100d4f03b7f355894cf332f830e710b97ce98c8a84abd0b948114ad176e008d33bd60f982b1ff37c8559797a06ef4f0ef61c186324e2b3506383606907b6a7c02b0f9f6157b53c867e4b9166c767b804d46a59b5216cde7a4e99040c5a40433225ee282a1b0a06c523eaf4534d7f83fa1155b0047718cbc546a0d072b04b3564eea1b422273f548271a0bb2316053fa76991955ebd63159434ecebb4e466dae5a1073a6727627097a1049e617d91d361094fa68f0ff77987130305beaba2eda04df997b714d6c6f2c29a6ad5cb4022b02709b");
-                nonce = Cnv.FromHex("000000000102030405060708");
-                aad = Cnv.FromHex("f33388860000000000004e91");
-                tag = Cnv.FromHex("eead9d67890cbb22392336fea1851f38");
-                pt = Aead.Decrypt(ct, key, nonce, aad, tag, Aead.Algorithm.Chacha20_Poly1305);
-                Console.WriteLine("P:" + Cnv.ToHex(pt));
-                // This is UTF-8-encoded text, so display it
-                string Str = System.Text.Encoding.UTF8.GetString(pt);
-                Console.WriteLine(Str);
+                //byte[] pt, ct, key, nonce, tag, aad;
+                //key = Cnv.FromHex("1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0");
+                //ct = Cnv.FromHex("64a0861575861af460f062c79be643bd5e805cfd345cf389f108670ac76c8cb24c6cfc18755d43eea09ee94e382d26b0bdb7b73c321b0100d4f03b7f355894cf332f830e710b97ce98c8a84abd0b948114ad176e008d33bd60f982b1ff37c8559797a06ef4f0ef61c186324e2b3506383606907b6a7c02b0f9f6157b53c867e4b9166c767b804d46a59b5216cde7a4e99040c5a40433225ee282a1b0a06c523eaf4534d7f83fa1155b0047718cbc546a0d072b04b3564eea1b422273f548271a0bb2316053fa76991955ebd63159434ecebb4e466dae5a1073a6727627097a1049e617d91d361094fa68f0ff77987130305beaba2eda04df997b714d6c6f2c29a6ad5cb4022b02709b");
+                //nonce = Cnv.FromHex("000000000102030405060708");
+                //aad = Cnv.FromHex("f33388860000000000004e91");
+                //tag = Cnv.FromHex("eead9d67890cbb22392336fea1851f39");
+                //pt = Aead.Decrypt(ct, key, nonce, aad, tag, Aead.Algorithm.Chacha20_Poly1305);
+                //Console.WriteLine("P:" + Cnv.ToHex(pt));
+
+                //// This is UTF-8-encoded text, so display it
+                //string Str = Encoding.UTF8.GetString(pt);
+                //Console.WriteLine(Str);
+                //Console.WriteLine(General.ErrorCode());
+                //Console.WriteLine("");
+
+
 
                 /*
                 var testKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
@@ -543,13 +548,13 @@ namespace ColdBear.ConsoleApp
 
 
 
-                var chacha = new ChaChaEngine(20);
-                var parameters = new ParametersWithIV(new KeyParameter(outputKey), Encoding.UTF8.GetBytes("PS-Msg05"));
-                chacha.Init(false, parameters);
+                //var chacha = new ChaChaEngine(20);
+                //var parameters = new ParametersWithIV(new KeyParameter(outputKey), Encoding.UTF8.GetBytes("PS-Msg05"));
+                //chacha.Init(false, parameters);
 
-                KeyParameter macKey = InitRecordMAC(chacha);
+                //KeyParameter macKey = InitRecordMAC(chacha);
 
-                var iOSPoly = new Org.BouncyCastle.Crypto.Macs.Poly1305();
+                //var iOSPoly = new Org.BouncyCastle.Crypto.Macs.Poly1305();
 
                 #region OLD POLY
 
@@ -596,8 +601,35 @@ namespace ColdBear.ConsoleApp
                 */
                 #endregion
 
-                byte[] output = new byte[messageData.Length];
-                chacha.ProcessBytes(messageData, 0, messageData.Length, output, 0);
+                //byte[] output = new byte[messageData.Length];
+                //chacha.ProcessBytes(messageData, 0, messageData.Length, output, 0);
+
+
+
+
+
+
+                byte[] output, ct, key, nonce, tag, aad;
+                key = outputKey;
+                ct = messageData;
+                nonce = Cnv.FromHex("00000000").Concat(Encoding.UTF8.GetBytes("PS-Msg05")).ToArray();
+                aad = new byte[0];
+                tag = authTag;
+                output = Aead.Decrypt(ct, key, nonce, aad, tag, Aead.Algorithm.Chacha20_Poly1305);
+                Console.WriteLine("P:" + Cnv.ToHex(output));
+
+                // This is UTF-8-encoded text, so display it
+                string Str = Encoding.UTF8.GetString(output);
+                Console.WriteLine(Str);
+                Console.WriteLine(General.ErrorCode());
+                Console.WriteLine("");
+
+
+
+
+
+
+
 
                 Debug.WriteLine("Decrypted TLV");
                 Debug.WriteLine(ByteArrayToString(output));
@@ -687,14 +719,14 @@ namespace ColdBear.ConsoleApp
 
                 byte[] plaintext = TLVParser.Serialise(encoder);
 
-                chacha = new ChaChaEngine(20);
-                parameters = new ParametersWithIV(new KeyParameter(hkdfEncKey), Encoding.UTF8.GetBytes("PS-Msg06"));
-                chacha.Init(true, parameters);
+                //chacha = new ChaChaEngine(20);
+                //parameters = new ParametersWithIV(new KeyParameter(hkdfEncKey), Encoding.UTF8.GetBytes("PS-Msg06"));
+                //chacha.Init(true, parameters);
 
-                macKey = InitRecordMAC(chacha);
+                //macKey = InitRecordMAC(chacha);
 
-                byte[] ciphertext = new byte[plaintext.Length];
-                chacha.ProcessBytes(plaintext, 0, plaintext.Length, ciphertext, 0);
+                //byte[] ciphertext = new byte[plaintext.Length];
+                //chacha.ProcessBytes(plaintext, 0, plaintext.Length, ciphertext, 0);
 
                 //var poly = new Poly1305();
                 //iOSPoly.Init(macKey);
@@ -710,7 +742,22 @@ namespace ColdBear.ConsoleApp
                 //var accessoryCalculatedMAC = Sodium.OneTimeAuth.Sign(Encoding.UTF8.GetString(ciphertext), macKey.GetKey());
                 //var verifyMac = Sodium.OneTimeAuth.Verify(ciphertext, accessoryCalculatedMAC, macKey.GetKey());
 
+                //byte[] pt, ct, key, nonce, tag, aad;
+                //key = Cnv.FromHex("071b113b 0ca743fe cccf3d05 1f737382");
+                //nonce = Cnv.FromHex("f0761e8d cd3d0001 76d457ed");
+                //aad = Cnv.FromHex("e20106d7 cd0df076 1e8dcd3d 88e54c2a 76d457ed");
+                //pt = Cnv.FromHex("08000f10 11121314 15161718 191a1b1c 1d1e1f20 21222324 25262728 292a2b2c 2d2e2f30 31323334 0004");
+                //tag = new byte[0];    // Do this to avoid "before it has been assigned a value" error
+                //ct = Aead.Encrypt(out tag, pt, key, nonce, aad, Aead.Algorithm.Aes_128_Gcm);
+                //Console.WriteLine("C: " + Cnv.ToHex(ct));
+                //Console.WriteLine("T: " + Cnv.ToHex(tag));
+
+
                 //byte[] ret = ciphertext.Concat(accessoryCalculatedMAC).ToArray();
+
+
+
+
 
                 //TLV responseTLV = new TLV();
                 //responseTLV.AddType(Constants.State, 6);
@@ -727,6 +774,33 @@ namespace ColdBear.ConsoleApp
                 //{
                 //    Content = content
                 //};
+
+                nonce = Cnv.FromHex("00000000").Concat(Encoding.UTF8.GetBytes("PS-Msg06")).ToArray();
+                aad = new byte[0];
+
+                byte[] outputTag = new byte[0];
+
+                var encryptedOutput = Aead.Encrypt(out outputTag, plaintext, hkdfEncKey, nonce, aad, Aead.Algorithm.Chacha20_Poly1305);
+
+                Console.WriteLine(General.ErrorCode());
+
+                byte[] ret = encryptedOutput.Concat(outputTag).ToArray();
+
+                TLV responseTLV = new TLV();
+                responseTLV.AddType(Constants.State, 6);
+                responseTLV.AddType(Constants.EncryptedData, ret);
+
+                output = TLVParser.Serialise(responseTLV);
+
+                ByteArrayContent content = new ByteArrayContent(output);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                Console.WriteLine("Step 6/6 is complete.");
+
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = content
+                };
             }
 
             return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
