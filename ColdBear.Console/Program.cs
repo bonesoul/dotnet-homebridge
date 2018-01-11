@@ -7,7 +7,7 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A1:22:3D:E3:CE:D6";
+        public const string ID = "A2:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {

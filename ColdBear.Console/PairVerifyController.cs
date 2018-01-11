@@ -61,7 +61,7 @@ namespace ColdBear.ConsoleApp
 
                 byte[] plaintext = TLVParser.Serialise(encoder);
 
-                var nonce = Cnv.FromHex("00000000").Concat(Encoding.UTF8.GetBytes("PS-Msg02")).ToArray();
+                var nonce = Cnv.FromHex("00000000").Concat(Encoding.UTF8.GetBytes("PV-Msg02")).ToArray();
                 var aad = new byte[0];
 
                 byte[] outputTag = new byte[0];
@@ -70,11 +70,9 @@ namespace ColdBear.ConsoleApp
 
                 byte[] ret = encryptedOutput.Concat(outputTag).ToArray();
 
-                var accessorySRPProof = File.ReadAllBytes("SRPProof");
-
                 TLV responseTLV = new TLV();
                 responseTLV.AddType(Constants.State, 2);
-                responseTLV.AddType(Constants.PublicKey, accessorySRPProof);
+                responseTLV.AddType(Constants.PublicKey, publicKey);
                 responseTLV.AddType(Constants.EncryptedData, ret);
 
                 var output = TLVParser.Serialise(responseTLV);
