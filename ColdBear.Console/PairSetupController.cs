@@ -782,7 +782,13 @@ namespace ColdBear.ConsoleApp
 
                 var encryptedOutput = Aead.Encrypt(out outputTag, plaintext, hkdfEncKey, nonce, aad, Aead.Algorithm.Chacha20_Poly1305);
 
-                Console.WriteLine(General.ErrorCode());
+                Console.WriteLine($"EncryptionStatus: {General.ErrorCode()}");
+
+                // Test the decryption
+                //
+                Aead.Decrypt(encryptedOutput, hkdfEncKey, nonce, aad, outputTag, Aead.Algorithm.Chacha20_Poly1305);
+
+                Console.WriteLine($"DecryptionStatus: {General.ErrorCode()}");
 
                 byte[] ret = encryptedOutput.Concat(outputTag).ToArray();
 
