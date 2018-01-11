@@ -11,13 +11,14 @@ namespace ColdBear.ConsoleApp
             var config = new HttpConfiguration();
 
             config.Routes.MapHttpRoute("Pair Setup", "pair-setup", new { controller = "PairSetup" });
+            config.Routes.MapHttpRoute("Pair Verify", "pair-verify", new { controller = "PairVerify" });
             config.Routes.MapHttpRoute("Identify", "identify", new { controller = "Identify" });
             config.Routes.MapHttpRoute("Pairings", "pairings", new { controller = "Pairings" });
             config.Routes.MapHttpRoute("Accessories", "accessories", new { controller = "Accessories" });
 
-            //SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
-            //traceWriter.IsVerbose = true;
-            //traceWriter.MinimumLevel = TraceLevel.Debug;
+            SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
+            traceWriter.IsVerbose = true;
+            traceWriter.MinimumLevel = TraceLevel.Debug;
 
             appBuilder.Use(typeof(HeaderChangeMiddleware));
 

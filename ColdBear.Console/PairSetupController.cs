@@ -161,6 +161,8 @@ namespace ColdBear.ConsoleApp
 
                     var server_M2 = sessionServer.Compute_M2(iOSPublicKey, client_M1, server_K);
 
+                    File.WriteAllBytes("SRPProof", server_M2);
+
                     responseTLV.AddType(Constants.Proof, server_M2);
                 }
                 else

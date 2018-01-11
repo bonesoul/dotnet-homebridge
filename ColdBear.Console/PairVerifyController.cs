@@ -1,5 +1,6 @@
 ﻿using Chaos.NaCl;
 using CryptoSysAPI;
+using Elliptic;
 using Org.BouncyCastle.Security;
 using SecurityDriven.Inferno.Kdf;
 using System;
@@ -39,9 +40,9 @@ namespace ColdBear.ConsoleApp
                 SecureRandom random = new SecureRandom();
                 random.NextBytes(privateKey);
 
-                var publicKey = MontgomeryCurve25519.GetPublicKey(privateKey);
+                var publicKey = Curve25519.GetPublicKey(privateKey);
 
-                var sharedSecret = MontgomeryCurve25519.KeyExchange(privateKey, iOSCurvePublicKey);
+                var sharedSecret = Curve25519.GetSharedSecret(privateKey, iOSCurvePublicKey);
 
                 var serverUsername = Encoding.UTF8.GetBytes(Program.ID);
 
@@ -51,7 +52,7 @@ namespace ColdBear.ConsoleApp
 
                 byte[] proof = Ed25519.Sign(material, accessoryLTSK);
 
-                HKDF g = new HKDF(() => { return new HMACSHA512(); }, sharedSecret, Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Setup-Encrypt-Info"));
+                HKDF g = new HKDF(() => { return new HMACSHA512(); }, sharedSecret, Encoding.UTF8.GetBytes("Pair-Verify-Encrypt-Salt"), Encoding.UTF8.GetBytes("Pair-Verify-Encrypt-Info"));
                 var outputKey = g.GetBytes(32);
 
                 TLV encoder = new TLV();
@@ -67,10 +68,14 @@ namespace ColdBear.ConsoleApp
 
                 var encryptedOutput = Aead.Encrypt(out outputTag, plaintext, outputKey, nonce, aad, Aead.Algorithm.Chacha20_Poly1305);
 
+                byte[] ret = encryptedOutput.Concat(outputTag).ToArray();
+
+                var accessorySRPProof = File.ReadAllBytes("SRPProof");
+
                 TLV responseTLV = new TLV();
-                responseTLV.AddType(Constants.State, 6);
-                responseTLV.AddType(Constants.EncryptedData, encryptedOutput);
-                responseTLV.AddType(Constants.PublicKey, publicKey);
+                responseTLV.AddType(Constants.State, 2);
+                responseTLV.AddType(Constants.PublicKey, accessorySRPProof);
+                responseTLV.AddType(Constants.EncryptedData, ret);
 
                 var output = TLVParser.Serialise(responseTLV);
 
@@ -84,6 +89,9 @@ namespace ColdBear.ConsoleApp
             }
             else if (state == 3)
             {
+                Console.WriteLine("Pair Verify Step 3/4");
+                Console.WriteLine("Verify Start Request");
+
                 TLV responseTLV = new TLV();
                 responseTLV.AddType(Constants.State, 4);
 
