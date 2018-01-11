@@ -2,17 +2,19 @@
 using Microsoft.Owin.Hosting;
 using System;
 using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "AD:22:3D:E3:CE:D6";
+        public const string ID = "AA:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
-            var t = new Thread(() =>
+            var t1 = new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
 
@@ -36,7 +38,7 @@ namespace ColdBear.ConsoleApp
 
                 Console.WriteLine("Advertising Service in background thread");
             });
-            t.Start();
+            t1.Start();
 
             string baseAddress = "http://*:51826/";
 
@@ -50,17 +52,69 @@ namespace ColdBear.ConsoleApp
                 Console.ReadLine();
             }
 
-            //HttpListener listener = new HttpListener();
-            //var context = listener.GetContext();
+            //var t2 = new Thread(() =>
+            //{
+            //    IPAddress address = IPAddress.Any;
+            //    IPEndPoint port = new IPEndPoint(address, 51826); //port 9999
 
-            //var request = context.Request;
+            //    TcpListener listener = new TcpListener(port);
 
+            //    listener.Start();
+
+            //    Console.WriteLine("--Server Started--");
+
+            //    while (true) //loop forever
+            //    {
+            //        Console.WriteLine("Waiting for New Controller to connect");
+            //        Socket sock = listener.AcceptSocket();
+
+            //        Console.WriteLine($"Controller has connected on {sock.Handle}!");
+
+            //        byte[] buffer = new byte[32];
+
+            //        string incomingMessage = "";
+
+            //        //read:
+            //        while (sock.Available > 0)
+            //        {
+            //            int gotBytes = sock.Receive(buffer);
+            //            incomingMessage += Encoding.ASCII.GetString(buffer, 0, gotBytes);
+            //        }
+
+            //        //debugging:
+            //        //Console.WriteLine(incomingMessage);
+
+            //        //Now check whether its a GET or a POST
+
+            //        if (incomingMessage.ToUpper().Contains("POST") && incomingMessage.ToUpper().Contains("/Pair-Setup")) //a search has been asked for
+            //        {
+            //            Console.WriteLine("Query Has Been Received");
+
+            //            //extracting the post data
+
+            //            string htmlPostData = incomingMessage.Substring(incomingMessage.IndexOf("songName"));
+
+            //            string[] parameters = htmlPostData.Split('&');
+
+            //            string[] inputs = new string[5];
+
+            //            for (int i = 0; i < parameters.Length; i++)
+            //            {
+            //                inputs[i] = (parameters[i].Split('='))[1];
+            //                inputs[i] = inputs[i].Replace('+', ' ');
+            //            }
+            //        }
+            //    }
+            //});
+
+            //t2.Start();
+
+            Console.WriteLine("Press any key to terminate");
+            Console.ReadKey();
 
             //context.
-
-
-
-            t.Join();
+            t1.Join();
+            //t2.Join();
         }
 
         private static void Mgr_ServiceRegistered(DNSSDService service, DNSSDFlags flags, string name, string regtype, string domain)
