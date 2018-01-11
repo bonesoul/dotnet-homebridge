@@ -202,11 +202,11 @@ namespace ColdBear.ConsoleApp
                 //**************************************
                 // TEST CODE FOR CHACHA20-POLY1305
 
-                var testOutputKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
+                var testKey = StringToByteArray("1c 92 40 a5 eb 55 d3 8a f3 33 88 86 04 f6 b5 f0 47 39 17 c1 40 2b 80 09 9d ca 5c bc 20 70 75 c0");
                 var nonce = StringToByteArray("01 02 03 04 05 06 07 08");
 
                 var testChacha = new ChaChaEngine(20);
-                var testParameters = new ParametersWithIV(new KeyParameter(testOutputKey), nonce);
+                var testParameters = new ParametersWithIV(new KeyParameter(testKey), nonce);
                 testChacha.Init(false, testParameters);
 
                 KeyParameter testMacKey = InitRecordMAC(testChacha);
@@ -240,7 +240,6 @@ namespace ColdBear.ConsoleApp
                 var aad = StringToByteArray("f3 33 88 86 00 00 00 00 00 00 4e 91");
 
                 var polyInput = new byte[0];
-
 
                 var aadPadding = new byte[0];
                 var cipherTextPadding = new byte[0];
@@ -277,7 +276,9 @@ namespace ColdBear.ConsoleApp
   "49 e6 17 d9 1d 36 10 94 fa 68 f0 ff 77 98 71 30" +
   "30 5b ea ba 2e da 04 df 99 7b 71 4d 6c 6f 2c 29" +
   "a6 ad 5c b4 02 2b 02 70 9b 00 00 00 00 00 00 00" +
-  "0c 00 00 00 00 00 00 00 09 01 00 00 00 00 00 00")
+  "0c 00 00 00 00 00 00 00 09 01 00 00 00 00 00 00");
+
+                var polyMatchesExpectedValue = polyInput.SequenceEqual(expectedPolyInput); 
 
                 Debug.WriteLine("Test Poly AEAD Input");
                 Debug.WriteLine(ByteArrayToString(polyInput));
@@ -289,6 +290,7 @@ namespace ColdBear.ConsoleApp
                 Debug.WriteLine("Test Tag");
                 Debug.WriteLine(ByteArrayToString(testCalculatedTag));
 
+                Debug.Write("H");
                 //// The AAD
                 ////
                 //testPoly.BlockUpdate(aad, 0, aad.Length);
@@ -583,11 +585,11 @@ namespace ColdBear.ConsoleApp
 
             //Console.WriteLine(ByteArrayToString(key));
 
-            Poly1305KeyGenerator.Clamp(key);
+            //Poly1305KeyGenerator.Clamp(key);
 
             //Console.WriteLine(ByteArrayToString(key));
 
-            Poly1305KeyGenerator.CheckKey(key);
+            //Poly1305KeyGenerator.CheckKey(key);
 
             return new KeyParameter(key);
         }
