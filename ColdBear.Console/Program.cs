@@ -7,12 +7,10 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "AC:22:3D:E3:CE:D6";
+        public const string ID = "AD:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
-           
-
             var t = new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
@@ -20,7 +18,7 @@ namespace ColdBear.ConsoleApp
                 DNSSDService service = new DNSSDService();
 
                 TXTRecord txtRecord = new TXTRecord();
-                txtRecord.SetValue("sf", "1");
+                txtRecord.SetValue("sf", "1"); // 1 means discoverable. 0 means it has been paired.
                 txtRecord.SetValue("ff", "0x00");
                 txtRecord.SetValue("ci", "2");
                 txtRecord.SetValue("id", ID);

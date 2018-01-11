@@ -699,17 +699,19 @@ namespace ColdBear.ConsoleApp
 
                 Ed25519.KeyPairFromSeed(out accessoryLTPK, out accessoryLTSK, seed);
 
-                byte[] material = outputKey.Concat(Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper())).Concat(accessoryLTPK).ToArray();
+                var serverUsername = Encoding.UTF8.GetBytes(Program.ID);
+
+                byte[] material = outputKey.Concat(serverUsername).Concat(accessoryLTPK).ToArray();
 
                 byte[] signature = Ed25519.Sign(material, accessoryLTSK);
 
                 Console.WriteLine("AccessoryDeviceInfo");
-                Console.WriteLine($"Username [{Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().Length}]: {Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString().ToUpper()}");
+                Console.WriteLine($"Username [{serverUsername.Length}]: {ByteArrayToString(serverUsername)}");
                 Console.WriteLine($"LTPK [{accessoryLTPK.Length}]: {ByteArrayToString(accessoryLTPK)}");
                 Console.WriteLine($"Proof [{signature.Length}]: {ByteArrayToString(signature)}");
 
                 TLV encoder = new TLV();
-                encoder.AddType(Constants.Identifier, Encoding.UTF8.GetBytes(Guid.Parse("E507A06B-DA4F-48A5-B42C-01B989DAA276").ToString()));
+                encoder.AddType(Constants.Identifier, serverUsername);
                 encoder.AddType(Constants.PublicKey, accessoryLTPK);
                 encoder.AddType(Constants.Signature, signature);
 
