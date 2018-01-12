@@ -1,6 +1,4 @@
 ﻿using Bonjour;
-using HttpMachine;
-using Microsoft.Owin.Hosting;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +7,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace ColdBear.ConsoleApp
 {
@@ -95,6 +92,11 @@ namespace ColdBear.ConsoleApp
 
             Console.WriteLine($"Handling a new connection from {clientEndPoint}");
 
+            // TODO We might want to put this somewhere else, so that we can access the 
+            // output stream to write events to the controller.
+            //
+            ControllerSession session = new ControllerSession();
+
             using (var networkStream = tcpClient.GetStream())
             {
                 byte[] receiveBuffer = new byte[tcpClient.ReceiveBufferSize];
@@ -113,6 +115,16 @@ namespace ColdBear.ConsoleApp
                     }
 
                     var content = receiveBuffer.CopySlice(0, bytesRead);
+
+                    if (session.IsVerified)
+                    {
+                        Console.WriteLine("**********************");
+                        Console.WriteLine("* DECRYPTING REQUEST *");
+                        Console.WriteLine("**********************");
+
+
+
+                    }
 
                     var ms = new MemoryStream(content);
                     StreamReader sr = new StreamReader(ms);
@@ -221,9 +233,15 @@ namespace ColdBear.ConsoleApp
                     else if (url == "pair-verify")
                     {
                         PairVerifyController controller = new PairVerifyController();
-                        result = controller.Post(contentMs.ToArray());
+                        result = controller.Post(contentMs.ToArray(), session);
+                    }
+                    else
+                    {
+                        throw new Exception("Not Supported");
                     }
 
+                    // Construct the response. We're assuming 100% success, all of the time, for now.
+                    //
                     var response = new byte[0];
                     var returnChars = new byte[2];
                     returnChars[0] = 0x0D;
@@ -237,7 +255,19 @@ namespace ColdBear.ConsoleApp
                     response = response.Concat(returnChars).ToArray();
                     response = response.Concat(result).ToArray();
 
-                    networkStream.Write(response, 0, response.Length);
+                    if (session.IsVerified)
+                    {
+                        // We need to decrypt the request!
+                        //
+                        Console.WriteLine("***********************");
+                        Console.WriteLine("* ENCRYPTING RESPONSE *");
+                        Console.WriteLine("***********************");
+                    }
+                    else
+                    {
+                        networkStream.Write(response, 0, response.Length);
+                    }
+
                     networkStream.Flush();
                 }
             }

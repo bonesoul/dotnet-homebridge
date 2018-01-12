@@ -192,6 +192,7 @@
   <ItemGroup>
     <Compile Include="AccessoriesController.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="ControllerSession.cs" />
     <Compile Include="Crypto\NaCl\CryptoBytes.cs" />
     <Compile Include="Crypto\NaCl\Ed25519.cs" />
     <Compile Include="Crypto\NaCl\Internal\Array16.cs" />

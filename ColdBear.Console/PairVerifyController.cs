@@ -16,7 +16,7 @@ namespace ColdBear.ConsoleApp
     public class PairVerifyController : ApiController
     {
         //public async Task<HttpResponseMessage> Post()
-        public byte[] Post(byte[] body)
+        public byte[] Post(byte[] body, ControllerSession session)
         {
             //var body = await Request.Content.ReadAsByteArrayAsync();
 
@@ -33,7 +33,7 @@ namespace ColdBear.ConsoleApp
                 Console.WriteLine("Pair Verify Step 1/4");
                 Console.WriteLine("Verify Start Request");
 
-                var iOSCurvePublicKey = parts.GetType(Constants.PublicKey);
+                var clientPublicKey = parts.GetType(Constants.PublicKey);
 
                 byte[] privateKey = new byte[32];
                 SecureRandom random = new SecureRandom();
@@ -41,11 +41,11 @@ namespace ColdBear.ConsoleApp
 
                 var publicKey = Curve25519.GetPublicKey(privateKey);
 
-                var sharedSecret = Curve25519.GetSharedSecret(privateKey, iOSCurvePublicKey);
+                var sharedSecret = Curve25519.GetSharedSecret(privateKey, clientPublicKey);
 
                 var serverUsername = Encoding.UTF8.GetBytes(Program.ID);
 
-                byte[] material = publicKey.Concat(serverUsername).Concat(iOSCurvePublicKey).ToArray();
+                byte[] material = publicKey.Concat(serverUsername).Concat(clientPublicKey).ToArray();
 
                 var accessoryLTSK = File.ReadAllBytes("PrivateKey");
 
@@ -74,6 +74,14 @@ namespace ColdBear.ConsoleApp
                 responseTLV.AddType(Constants.PublicKey, publicKey);
                 responseTLV.AddType(Constants.EncryptedData, ret);
 
+                // Store the details on the session.
+                //
+                session.ClientPublicKey = clientPublicKey;
+                session.PrivateKey = privateKey;
+                session.PublicKey = publicKey;
+                session.SharedSecret = sharedSecret;
+                session.HkdfPairEncKey = outputKey;
+
                 var output = TLVParser.Serialise(responseTLV);
 
                 return output;
@@ -93,6 +101,7 @@ namespace ColdBear.ConsoleApp
 
                 // We're looking good here. Need to set the encryption/settings on this session.
                 //
+                session.IsVerified = true;
 
                 TLV responseTLV = new TLV();
                 responseTLV.AddType(Constants.State, 4);
