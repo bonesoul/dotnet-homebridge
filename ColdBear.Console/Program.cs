@@ -2,9 +2,14 @@
 using HttpMachine;
 using Microsoft.Owin.Hosting;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ColdBear.ConsoleApp
 {
@@ -52,7 +57,7 @@ namespace ColdBear.ConsoleApp
             //    Console.ReadLine();
             //}
 
-            var t2 = new Thread(() =>
+            var t2 = new Thread(async () =>
             {
                 IPAddress address = IPAddress.Any;
                 IPEndPoint port = new IPEndPoint(address, 51826); //port 9999
@@ -66,62 +71,157 @@ namespace ColdBear.ConsoleApp
                 while (true) //loop forever
                 {
                     Console.WriteLine("Waiting for New Controller to connect");
-                    Socket sock = listener.AcceptSocket();
+                    TcpClient client = await listener.AcceptTcpClientAsync();
 
-                    Console.WriteLine($"Controller has connected on {sock.Handle}!");
-
-                    byte[] buffer = new byte[32];
-
-                    var handler = new HttpParserDelegate();
-                    var parser = new HttpParser(handler);
-                    
-                    while (sock.Available > 0)
-                    {
-                        int gotBytes = sock.Receive(buffer);
-                        parser.Execute(new ArraySegment<byte>(buffer));
-                    }
-
-                    //debugging:
-                    //Console.WriteLine(incomingMessage);
-
-                    //Now check whether its a GET or a POST
-
-                    //while ((bytesRead = inputStream.Read(buffer, 0, buffer.Length)) > 0)
-                    //    if (bytesRead != )
-                    //        goto error; /* or whatever you like */
-
-                    // ensure you get the last callbacks.
-                    //parser.Execute(default(ArraySegment<byte>));
-
-                    //if (incomingMessage.ToUpper().Contains("POST") && incomingMessage.ToUpper().Contains("/Pair-Setup")) //a search has been asked for
-                    //{
-                    //    Console.WriteLine("Query Has Been Received");
-
-                    //    //extracting the post data
-
-                    //    string htmlPostData = incomingMessage.Substring(incomingMessage.IndexOf("songName"));
-
-                    //    string[] parameters = htmlPostData.Split('&');
-
-                    //    string[] inputs = new string[5];
-
-                    //    for (int i = 0; i < parameters.Length; i++)
-                    //    {
-                    //        inputs[i] = (parameters[i].Split('='))[1];
-                    //        inputs[i] = inputs[i].Replace('+', ' ');
-                    //    }
-                    //}
+                    Thread clientThread = new Thread(new ParameterizedThreadStart(HandleClientConnection));
+                    clientThread.Start(client);
                 }
             });
 
             t2.Start();
-
 
             Console.WriteLine("Press any key to terminate");
             Console.ReadKey();
 
             t1.Join();
             t2.Join();
+        }
+
+        private static void HandleClientConnection(object obj)
+        {
+            TcpClient tcpClient = (TcpClient)obj;
+
+            string clientEndPoint = tcpClient.Client.RemoteEndPoint.ToString();
+
+            Console.WriteLine($"Handling a new connection from {clientEndPoint}");
+
+            using (var networkStream = tcpClient.GetStream())
+            {
+                byte[] receiveBuffer = new byte[tcpClient.ReceiveBufferSize];
+
+                while (true)
+                {
+                    // This is blocking and will wait for data to come from the client.
+                    //
+                    var bytesRead = networkStream.Read(receiveBuffer, 0, (int)tcpClient.ReceiveBufferSize);
+
+                    if (bytesRead == 0)
+                    {
+                        // Read returns 0 if the client closes the connection.
+                        //
+                        break;
+                    }
+
+                    var ms = new MemoryStream(receiveBuffer);
+                    StreamReader sr = new StreamReader(ms);
+
+                    String request = sr.ReadLine();
+                    string[] tokens = request.Split(' ');
+                    if (tokens.Length != 3)
+                    {
+                        throw new Exception("Invalid HTTP request line");
+                    }
+                    var method = tokens[0].ToUpper();
+                    var url = tokens[1].Trim('/');
+                    var version = tokens[2];
+
+                    string line;
+
+                    Dictionary<string, string> httpHeaders = new Dictionary<string, string>();
+
+                    //HttpWebRequest wr = new HttpWebRequest()
+
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        if (line.Equals(""))
+                        {
+                            Console.WriteLine("got headers");
+                            break; ;
+                        }
+
+                        int separator = line.IndexOf(':');
+                        if (separator == -1)
+                        {
+                            throw new Exception("invalid http header line: " + line);
+                        }
+                        String name = line.Substring(0, separator);
+                        int pos = separator + 1;
+                        while ((pos < line.Length) && (line[pos] == ' '))
+                        {
+                            pos++; // strip any spaces
+                        }
+
+                        string value = line.Substring(pos, line.Length - pos);
+                        Console.WriteLine("header: {0}:{1}", name, value);
+                        httpHeaders[name.ToLower()] = value;
+                    }
+
+                    int BUF_SIZE = 4096;
+                    int content_len = 0;
+
+                    BinaryReader br = new BinaryReader(ms);
+                    MemoryStream contentMs = new MemoryStream();
+                    if (httpHeaders.ContainsKey("content-length"))
+                    {
+                        content_len = Convert.ToInt32(httpHeaders["content-length"]);
+
+                        if (content_len > 20000)
+                        {
+                            throw new Exception(
+                                String.Format("POST Content-Length({0}) too big for this simple server",
+                                  content_len));
+                        }
+                        byte[] buf = new byte[BUF_SIZE];
+                        int to_read = content_len;
+                        while (to_read > 0)
+                        {
+                            Console.WriteLine("starting Read, to_read={0}", to_read);
+
+                            int numread = br.Read(buf, 0, Math.Min(BUF_SIZE, to_read));
+
+                            Console.WriteLine("read finished, numread={0}", numread);
+                            if (numread == 0)
+                            {
+                                if (to_read == 0)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    throw new Exception("client disconnected during post");
+                                }
+                            }
+                            to_read -= numread;
+                            contentMs.Write(buf, 0, numread);
+                        }
+                        contentMs.Seek(0, SeekOrigin.Begin);
+
+                        Console.WriteLine($"Content Length: {contentMs.Length}");
+                    }
+
+                    if (url == "pair-setup")
+                    {
+                        PairSetupController controller = new PairSetupController();
+                        controller.Post(contentMs.ToArray());
+                    }
+                    else if (url == "pair-verify")
+                    {
+
+                    }
+
+                    var response = new byte[0];
+                    var returnChars = new byte[2];
+                    returnChars[0] = 0x0D;
+                    returnChars[1] = 0x0A;
+                    response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.0 200 OK")).Concat(returnChars).ToArray();
+                    response = response.Concat(Encoding.ASCII.GetBytes("Content-Length: 0")).Concat(returnChars).ToArray();
+                    response = response.Concat(Encoding.ASCII.GetBytes(@"Content-Type: application\pairing+tlv")).Concat(returnChars).ToArray();
+                    response = response.Concat(returnChars).Concat(returnChars).ToArray();
+
+                    networkStream.Write(response, 0, response.Length);
+                    networkStream.Flush();
+                }
+            }
         }
 
         private static void Mgr_ServiceRegistered(DNSSDService service, DNSSDFlags flags, string name, string regtype, string domain)

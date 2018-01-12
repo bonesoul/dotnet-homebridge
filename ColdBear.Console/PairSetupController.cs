@@ -33,8 +33,8 @@ namespace ColdBear.ConsoleApp
         private static byte[] server_b;
         private static System.Numerics.BigInteger server_B;
 
-        //public ask<HttpResponseMessage> Post(byte[] body)
-        public HttpResponseMessage Post(byte[] body)
+        //public Task<HttpResponseMessage> Post(byte[] body)
+        public byte[] Post(byte[] body)
         {
             Debug.WriteLine($"Length of input is {body.Length} bytes");
 
@@ -98,13 +98,17 @@ namespace ColdBear.ConsoleApp
 
                 byte[] output = TLVParser.Serialise(responseTLV);
 
-                ByteArrayContent content = new ByteArrayContent(output);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+                return output;
 
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = content
-                };
+                //ByteArrayContent content = new ByteArrayContent(output);
+                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                //{
+                //    Content = content
+                //};
+
+
             }
             else if (state == 3)
             {
@@ -172,13 +176,15 @@ namespace ColdBear.ConsoleApp
 
                 byte[] output = TLVParser.Serialise(responseTLV);
 
-                ByteArrayContent content = new ByteArrayContent(output);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+                return output;
 
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = content
-                };
+                //ByteArrayContent content = new ByteArrayContent(output);
+                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                //{
+                //    Content = content
+                //};
             }
             else if (state == 5)
             {
@@ -664,13 +670,15 @@ namespace ColdBear.ConsoleApp
 
                     byte[] errorOutput = TLVParser.Serialise(errorTLV);
 
-                    var errorContent = new ByteArrayContent(output);
-                    errorContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+                    return errorOutput;
 
-                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                    {
-                        Content = errorContent
-                    };
+                    //var errorContent = new ByteArrayContent(output);
+                    //errorContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                    //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    //{
+                    //    Content = errorContent
+                    //};
                 }
 
                 // Save the iOS Device's information.
@@ -804,18 +812,22 @@ namespace ColdBear.ConsoleApp
 
                 output = TLVParser.Serialise(responseTLV);
 
-                ByteArrayContent content = new ByteArrayContent(output);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+                return output;
 
-                Console.WriteLine("Step 6/6 is complete.");
+                //ByteArrayContent content = new ByteArrayContent(output);
+                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
 
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = content
-                };
+                //Console.WriteLine("Step 6/6 is complete.");
+
+                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                //{
+                //    Content = content
+                //};
             }
 
-            return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+            return null;
+
+            //return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
         }
 
         static byte[] ReverseBytes(long value)
