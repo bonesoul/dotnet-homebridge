@@ -8,5 +8,6 @@
         public byte[] PublicKey { get; internal set; }
         public byte[] PrivateKey { get; internal set; }
         public byte[] ClientPublicKey { get; internal set; }
+        public bool SkipFirstEncryption { get; internal set; }
     }
 }

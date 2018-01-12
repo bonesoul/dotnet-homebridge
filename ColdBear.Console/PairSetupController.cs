@@ -3,7 +3,6 @@ using Chaos.NaCl;
 using CryptoSysAPI;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Macs;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
 using SecurityDriven.Inferno.Kdf;
@@ -12,10 +11,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Web.Http;
 
 namespace ColdBear.ConsoleApp
@@ -54,7 +51,9 @@ namespace ColdBear.ConsoleApp
 
                 CODE = $"123-45-{code}";
 
-                Console.WriteLine($"PING CODE: {CODE}");
+                Console.WriteLine($"********************");
+                Console.WriteLine($"* PIN CODE: {CODE} *");
+                Console.WriteLine($"********************");
 
                 Random rnd = new Random();
                 salt = new Byte[16];

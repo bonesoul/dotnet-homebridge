@@ -12,7 +12,7 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A4:22:3D:E3:CE:D6";
+        public const string ID = "A6:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
@@ -68,7 +68,10 @@ namespace ColdBear.ConsoleApp
                 while (true) //loop forever
                 {
                     Console.WriteLine("Waiting for New Controller to connect");
+
                     TcpClient client = await listener.AcceptTcpClientAsync();
+
+                    Console.WriteLine("A Controller has connected!");
 
                     Thread clientThread = new Thread(new ParameterizedThreadStart(HandleClientConnection));
                     clientThread.Start(client);
@@ -101,8 +104,12 @@ namespace ColdBear.ConsoleApp
             {
                 byte[] receiveBuffer = new byte[tcpClient.ReceiveBufferSize];
 
-                while (true)
+                var keepListening = true;
+
+                while (keepListening)
                 {
+                    Console.WriteLine("Waiting for more data from the client....");
+
                     // This is blocking and will wait for data to come from the client.
                     //
                     var bytesRead = networkStream.Read(receiveBuffer, 0, (int)tcpClient.ReceiveBufferSize);
@@ -175,7 +182,14 @@ namespace ColdBear.ConsoleApp
                     Console.WriteLine("Input");
                     Console.WriteLine(ByteArrayToString(ms.ToArray()));
 
-                    ms.Position = ms.Position - 3;
+                    content_len = Convert.ToInt32(httpHeaders["content-length"]);
+
+                    if (content_len > 20000)
+                    {
+                        throw new Exception(String.Format("POST Content-Length({0}) too big for this simple server", content_len));
+                    }
+
+                    ms.Position = ms.Position - content_len;
 
                     var temp = new byte[ms.Length - ms.Position];
                     Array.Copy(ms.ToArray(), (int)ms.Position, temp, 0, (int)ms.Length - ms.Position);
@@ -187,13 +201,6 @@ namespace ColdBear.ConsoleApp
                     MemoryStream contentMs = new MemoryStream();
                     if (httpHeaders.ContainsKey("content-length"))
                     {
-                        content_len = Convert.ToInt32(httpHeaders["content-length"]);
-
-                        if (content_len > 20000)
-                        {
-                            throw new Exception(String.Format("POST Content-Length({0}) too big for this simple server", content_len));
-                        }
-
                         byte[] buf = new byte[BUF_SIZE];
                         int to_read = content_len;
                         while (to_read > 0)
@@ -251,26 +258,38 @@ namespace ColdBear.ConsoleApp
 
                     response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.0 200 OK")).Concat(returnChars).ToArray();
                     response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
-                    response = response.Concat(Encoding.ASCII.GetBytes(@"Content-Type: application\pairing+tlv")).Concat(returnChars).ToArray();
+                    response = response.Concat(Encoding.ASCII.GetBytes(@"Content-Type: application/pairing+tlv8")).Concat(returnChars).ToArray();
                     response = response.Concat(returnChars).ToArray();
                     response = response.Concat(result).ToArray();
 
-                    if (session.IsVerified)
+                    if (session.IsVerified && !session.SkipFirstEncryption)
                     {
                         // We need to decrypt the request!
                         //
                         Console.WriteLine("***********************");
                         Console.WriteLine("* ENCRYPTING RESPONSE *");
                         Console.WriteLine("***********************");
+
+                        networkStream.Write(response, 0, response.Length);
+                        networkStream.Flush();
                     }
                     else
                     {
                         networkStream.Write(response, 0, response.Length);
-                    }
+                        networkStream.Flush();
 
-                    networkStream.Flush();
+                        if(session.SkipFirstEncryption)
+                        {
+                            session.SkipFirstEncryption = false;
+                        }
+                    }
                 }
             }
+
+            Console.WriteLine($"Connection from {clientEndPoint} will be closed!");
+
+            tcpClient.Close();
+            tcpClient.Dispose();
         }
 
         public static string ByteArrayToString(byte[] ba)

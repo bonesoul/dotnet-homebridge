@@ -102,6 +102,7 @@ namespace ColdBear.ConsoleApp
                 // We're looking good here. Need to set the encryption/settings on this session.
                 //
                 session.IsVerified = true;
+                session.SkipFirstEncryption = true;
 
                 TLV responseTLV = new TLV();
                 responseTLV.AddType(Constants.State, 4);
