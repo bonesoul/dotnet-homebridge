@@ -9,5 +9,7 @@
         public byte[] PrivateKey { get; internal set; }
         public byte[] ClientPublicKey { get; internal set; }
         public bool SkipFirstEncryption { get; internal set; }
+        public byte[] AccessoryToControllerKey { get; internal set; }
+        public byte[] ControllerToAccessoryKey { get; internal set; }
     }
 }

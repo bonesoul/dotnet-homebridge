@@ -1,10 +1,13 @@
 ﻿using Bonjour;
+using CryptoSysAPI;
+using SecurityDriven.Inferno.Kdf;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
@@ -12,7 +15,7 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A6:22:3D:E3:CE:D6";
+        public const string ID = "A7:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
@@ -129,8 +132,25 @@ namespace ColdBear.ConsoleApp
                         Console.WriteLine("* DECRYPTING REQUEST *");
                         Console.WriteLine("**********************");
 
+                        int messageDataLength = content.Length - 16;
 
+                        byte[] messageData = new byte[messageDataLength];
+                        Buffer.BlockCopy(content, 0, messageData, 0, messageDataLength);
 
+                        byte[] authTag = new byte[16];
+                        Buffer.BlockCopy(content, messageDataLength, authTag, 0, 16);
+
+                        HKDF g = new HKDF(() => { return new HMACSHA512(); }, session.SharedSecret, Encoding.UTF8.GetBytes("Control-Salt"), Encoding.UTF8.GetBytes("Control-Write-Encryption-Key"));
+                        var outputKey = g.GetBytes(32);
+
+                        var nonce = Cnv.FromHex("000000000000000000000000");
+                        var aad = new byte[0];
+
+                        // Use the AccessoryToController key to decrypt the data.
+                        //
+                        var decryptedData = Aead.Decrypt(messageData, session.ControllerToAccessoryKey, nonce, aad, authTag, Aead.Algorithm.Chacha20_Poly1305);
+
+                        content = decryptedData;
                     }
 
                     var ms = new MemoryStream(content);
@@ -278,7 +298,7 @@ namespace ColdBear.ConsoleApp
                         networkStream.Write(response, 0, response.Length);
                         networkStream.Flush();
 
-                        if(session.SkipFirstEncryption)
+                        if (session.SkipFirstEncryption)
                         {
                             session.SkipFirstEncryption = false;
                         }

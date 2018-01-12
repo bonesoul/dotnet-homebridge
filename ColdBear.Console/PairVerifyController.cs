@@ -82,6 +82,16 @@ namespace ColdBear.ConsoleApp
                 session.SharedSecret = sharedSecret;
                 session.HkdfPairEncKey = outputKey;
 
+                var encSalt = Encoding.UTF8.GetBytes("Control-Salt");
+                var infoRead = Encoding.UTF8.GetBytes("Control-Read-Encryption-Key");
+                var infoWrite = Encoding.UTF8.GetBytes("Control-Write-Encryption-Key");
+
+                g = new HKDF(() => { return new HMACSHA512(); }, sharedSecret, encSalt, infoRead);
+                session.AccessoryToControllerKey = g.GetBytes(32);
+
+                g = new HKDF(() => { return new HMACSHA512(); }, sharedSecret, encSalt, infoWrite);
+                session.ControllerToAccessoryKey = g.GetBytes(32);
+
                 var output = TLVParser.Serialise(responseTLV);
 
                 return output;
