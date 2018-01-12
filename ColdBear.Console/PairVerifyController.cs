@@ -7,19 +7,18 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Web.Http;
 
 namespace ColdBear.ConsoleApp
 {
     public class PairVerifyController : ApiController
     {
-        public async Task<HttpResponseMessage> Post()
+        //public async Task<HttpResponseMessage> Post()
+        public byte[] Post(byte[] body)
         {
-            var body = await Request.Content.ReadAsByteArrayAsync();
+            //var body = await Request.Content.ReadAsByteArrayAsync();
 
             Debug.WriteLine($"Length of input is {body.Length} bytes");
 
@@ -77,34 +76,42 @@ namespace ColdBear.ConsoleApp
 
                 var output = TLVParser.Serialise(responseTLV);
 
-                ByteArrayContent content = new ByteArrayContent(output);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+                return output;
 
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = content
-                };
+                //ByteArrayContent content = new ByteArrayContent(output);
+                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                //{
+                //    Content = content
+                //};
             }
             else if (state == 3)
             {
                 Console.WriteLine("Pair Verify Step 3/4");
                 Console.WriteLine("Verify Start Request");
 
+                // We're looking good here. Need to set the encryption/settings on this session.
+                //
+
                 TLV responseTLV = new TLV();
                 responseTLV.AddType(Constants.State, 4);
 
                 var output = TLVParser.Serialise(responseTLV);
 
-                ByteArrayContent content = new ByteArrayContent(output);
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+                return output;
 
-                return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                {
-                    Content = content
-                };
+                //ByteArrayContent content = new ByteArrayContent(output);
+                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
+
+                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                //{
+                //    Content = content
+                //};
             }
 
-            return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+            //return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
+            return null;
         }
 
         public static byte[] StringToByteArray(String hex)

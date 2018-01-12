@@ -112,7 +112,9 @@ namespace ColdBear.ConsoleApp
                         break;
                     }
 
-                    var ms = new MemoryStream(receiveBuffer);
+                    var content = receiveBuffer.CopySlice(0, bytesRead);
+
+                    var ms = new MemoryStream(content);
                     StreamReader sr = new StreamReader(ms);
 
                     String request = sr.ReadLine();
@@ -129,10 +131,9 @@ namespace ColdBear.ConsoleApp
 
                     Dictionary<string, string> httpHeaders = new Dictionary<string, string>();
 
-                    //HttpWebRequest wr = new HttpWebRequest()
-
                     while ((line = sr.ReadLine()) != null)
                     {
+                        Console.WriteLine($"Current Position: {ms.Position}");
                         if (line.Equals(""))
                         {
                             Console.WriteLine("got headers");
@@ -159,6 +160,17 @@ namespace ColdBear.ConsoleApp
                     int BUF_SIZE = 4096;
                     int content_len = 0;
 
+                    Console.WriteLine("Input");
+                    Console.WriteLine(ByteArrayToString(ms.ToArray()));
+
+                    ms.Position = ms.Position - 3;
+
+                    var temp = new byte[ms.Length - ms.Position];
+                    Array.Copy(ms.ToArray(), (int)ms.Position, temp, 0, (int)ms.Length - ms.Position);
+
+                    Console.WriteLine("Content");
+                    Console.WriteLine(ByteArrayToString(temp));
+
                     BinaryReader br = new BinaryReader(ms);
                     MemoryStream contentMs = new MemoryStream();
                     if (httpHeaders.ContainsKey("content-length"))
@@ -167,10 +179,9 @@ namespace ColdBear.ConsoleApp
 
                         if (content_len > 20000)
                         {
-                            throw new Exception(
-                                String.Format("POST Content-Length({0}) too big for this simple server",
-                                  content_len));
+                            throw new Exception(String.Format("POST Content-Length({0}) too big for this simple server", content_len));
                         }
+
                         byte[] buf = new byte[BUF_SIZE];
                         int to_read = content_len;
                         while (to_read > 0)
@@ -180,6 +191,7 @@ namespace ColdBear.ConsoleApp
                             int numread = br.Read(buf, 0, Math.Min(BUF_SIZE, to_read));
 
                             Console.WriteLine("read finished, numread={0}", numread);
+
                             if (numread == 0)
                             {
                                 if (to_read == 0)
@@ -199,29 +211,46 @@ namespace ColdBear.ConsoleApp
                         Console.WriteLine($"Content Length: {contentMs.Length}");
                     }
 
+                    byte[] result = null;
+
                     if (url == "pair-setup")
                     {
                         PairSetupController controller = new PairSetupController();
-                        controller.Post(contentMs.ToArray());
+                        result = controller.Post(contentMs.ToArray());
                     }
                     else if (url == "pair-verify")
                     {
-
+                        PairVerifyController controller = new PairVerifyController();
+                        result = controller.Post(contentMs.ToArray());
                     }
 
                     var response = new byte[0];
                     var returnChars = new byte[2];
                     returnChars[0] = 0x0D;
                     returnChars[1] = 0x0A;
+
+                    var contentLength = $"Content-Length: {result.Length}";
+
                     response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.0 200 OK")).Concat(returnChars).ToArray();
-                    response = response.Concat(Encoding.ASCII.GetBytes("Content-Length: 0")).Concat(returnChars).ToArray();
+                    response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
                     response = response.Concat(Encoding.ASCII.GetBytes(@"Content-Type: application\pairing+tlv")).Concat(returnChars).ToArray();
-                    response = response.Concat(returnChars).Concat(returnChars).ToArray();
+                    response = response.Concat(returnChars).ToArray();
+                    response = response.Concat(result).ToArray();
 
                     networkStream.Write(response, 0, response.Length);
                     networkStream.Flush();
                 }
             }
+        }
+
+        public static string ByteArrayToString(byte[] ba)
+        {
+            StringBuilder hex = new StringBuilder(ba.Length * 2);
+            foreach (byte b in ba)
+            {
+                hex.AppendFormat("{0:x2}", b);
+            }
+            return hex.ToString().ToUpper();
         }
 
         private static void Mgr_ServiceRegistered(DNSSDService service, DNSSDFlags flags, string name, string regtype, string domain)
