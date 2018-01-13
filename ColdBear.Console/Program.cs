@@ -15,7 +15,7 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A7:22:3D:E3:CE:D6";
+        public const string ID = "A8:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
@@ -132,25 +132,40 @@ namespace ColdBear.ConsoleApp
                         Console.WriteLine("* DECRYPTING REQUEST *");
                         Console.WriteLine("**********************");
 
-                        int messageDataLength = content.Length - 16;
+                        var encryptionResult = new byte[0];
 
-                        byte[] messageData = new byte[messageDataLength];
-                        Buffer.BlockCopy(content, 0, messageData, 0, messageDataLength);
+                        for (int offset = 0; offset < bytesRead;)
+                        {
+                            // The first type bytes represent the length of the data.
+                            //
+                            byte[] twoBytes = new Byte[] { content[0], content[1] };
 
-                        byte[] authTag = new byte[16];
-                        Buffer.BlockCopy(content, messageDataLength, authTag, 0, 16);
+                            offset += 2;
 
-                        HKDF g = new HKDF(() => { return new HMACSHA512(); }, session.SharedSecret, Encoding.UTF8.GetBytes("Control-Salt"), Encoding.UTF8.GetBytes("Control-Write-Encryption-Key"));
-                        var outputKey = g.GetBytes(32);
+                            UInt16 frameLength = BitConverter.ToUInt16(twoBytes, 0);
 
-                        var nonce = Cnv.FromHex("000000000000000000000000");
-                        var aad = new byte[0];
+                            int availableDataLength = bytesRead - offset - 16;
 
-                        // Use the AccessoryToController key to decrypt the data.
-                        //
-                        var decryptedData = Aead.Decrypt(messageData, session.ControllerToAccessoryKey, nonce, aad, authTag, Aead.Algorithm.Chacha20_Poly1305);
+                            byte[] messageData = new byte[availableDataLength];
+                            Buffer.BlockCopy(content, offset, messageData, 0, availableDataLength);
 
-                        content = decryptedData;
+                            offset += availableDataLength;
+
+                            byte[] authTag = new byte[16];
+                            Buffer.BlockCopy(content, offset, authTag, 0, 16);
+
+                            var nonce = Cnv.FromHex("000000000000000000000000");
+
+                            // Use the AccessoryToController key to decrypt the data.
+                            //
+                            var decryptedData = Aead.Decrypt(messageData, session.ControllerToAccessoryKey, nonce, twoBytes, authTag, Aead.Algorithm.Chacha20_Poly1305);
+
+                            encryptionResult = encryptionResult.Concat(decryptedData).ToArray();
+
+                            offset += (18 + frameLength);
+                        }
+
+                        content = encryptionResult;
                     }
 
                     var ms = new MemoryStream(content);
