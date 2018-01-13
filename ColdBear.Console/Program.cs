@@ -288,6 +288,15 @@ namespace ColdBear.ConsoleApp
                         PairingsController controller = new PairingsController();
                         result = controller.Post(contentMs.ToArray(), session);
                     }
+                    else if(url == "characteristics")
+                    {
+                        // The url will contain a query string e.g. id=1.1 meaning accessoryId 1 with characteristic 1
+                        //
+                        //GET, PUT verbs supported.
+                        //
+
+
+                    }
                     else
                     {
                         Console.WriteLine($"Request for {url} is not yet supported!");
