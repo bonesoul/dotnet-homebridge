@@ -14,8 +14,9 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A9:22:3D:E3:CE:D6";
-
+        public const string ID = "B1:22:3D:E3:CE:D6";
+        
+        
         static void Main(string[] args)
         {
             var t1 = new Thread(() =>
@@ -153,6 +154,7 @@ namespace ColdBear.ConsoleApp
                             byte[] authTag = new byte[16];
                             Buffer.BlockCopy(content, offset, authTag, 0, 16);
 
+                            // TODO Use the inbound message count!
                             var nonce = Cnv.FromHex("000000000000000000000000");
 
                             // Use the AccessoryToController key to decrypt the data.
@@ -299,7 +301,7 @@ namespace ColdBear.ConsoleApp
 
                     var contentLength = $"Content-Length: {result.Item2.Length}";
 
-                    response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.0 200 OK")).Concat(returnChars).ToArray();
+                    response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK")).Concat(returnChars).ToArray();
                     response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
                     response = response.Concat(Encoding.ASCII.GetBytes($"Content-Type: {result.Item1}")).Concat(returnChars).ToArray();
                     response = response.Concat(returnChars).ToArray();
@@ -315,18 +317,31 @@ namespace ColdBear.ConsoleApp
 
                         var resultData = new byte[0];
 
-                        var dataLength = BitConverter.GetBytes((short)response.Length);
+                        for (int offset = 0; offset < response.Length;)
+                        {
+                            int length = Math.Min(response.Length - offset, 1024);
 
-                        resultData = resultData.Concat(dataLength).ToArray();
+                            var dataLength = BitConverter.GetBytes((short)length);
 
-                        var nonce = Cnv.FromHex("000000000000000000000000");
+                            resultData = resultData.Concat(dataLength).ToArray();
 
-                        // Use the AccessoryToController key to decrypt the data.
-                        //
-                        var authTag = new byte[16];
-                        var encryptedData = Aead.Encrypt(out authTag, response, session.AccessoryToControllerKey, nonce, dataLength, Aead.Algorithm.Chacha20_Poly1305);
+                            // TODO Use the outbound message count!
+                            var nonce = Cnv.FromHex("000000000000000000000000");
 
-                        response = resultData.Concat(encryptedData).Concat(authTag).ToArray();
+                            var dataToEncrypt = new byte[length];
+                            Array.Copy(response, offset, dataToEncrypt, 0, length);
+
+                            // Use the AccessoryToController key to decrypt the data.
+                            //
+                            var authTag = new byte[16];
+                            var encryptedData = Aead.Encrypt(out authTag, dataToEncrypt, session.AccessoryToControllerKey, nonce, dataLength, Aead.Algorithm.Chacha20_Poly1305);
+
+                            resultData = resultData.Concat(encryptedData).Concat(authTag).ToArray();
+
+                            offset += length;
+                        }
+
+                        response = resultData;
 
                         networkStream.Write(response, 0, response.Length);
                         networkStream.Flush();

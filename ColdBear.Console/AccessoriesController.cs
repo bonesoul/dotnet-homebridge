@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.IO;
 using System.Text;
 using System.Web.Http;
 
@@ -9,11 +10,7 @@ namespace ColdBear.ConsoleApp
     {
         public Tuple<string, byte[]> Get(ControllerSession session)
         {
-            JObject jObject = new JObject();
-            jObject.Add("accessories", new JArray());
-
-            var output = Encoding.UTF8.GetBytes(jObject.ToString());
-
+            var output = File.ReadAllBytes("accessories.json");
             return new Tuple<string, byte[]>("application/hap+json", output);
         }
     }
