@@ -1,6 +1,5 @@
 ﻿using Bonjour;
 using CryptoSysAPI;
-using SecurityDriven.Inferno.Kdf;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +14,7 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "A8:22:3D:E3:CE:D6";
+        public const string ID = "A9:22:3D:E3:CE:D6";
 
         static void Main(string[] args)
         {
@@ -213,59 +212,62 @@ namespace ColdBear.ConsoleApp
 
                     int BUF_SIZE = 4096;
                     int content_len = 0;
+                    MemoryStream contentMs = new MemoryStream();
 
                     Console.WriteLine("Input");
                     Console.WriteLine(ByteArrayToString(ms.ToArray()));
 
-                    content_len = Convert.ToInt32(httpHeaders["content-length"]);
-
-                    if (content_len > 20000)
-                    {
-                        throw new Exception(String.Format("POST Content-Length({0}) too big for this simple server", content_len));
-                    }
-
-                    ms.Position = ms.Position - content_len;
-
-                    var temp = new byte[ms.Length - ms.Position];
-                    Array.Copy(ms.ToArray(), (int)ms.Position, temp, 0, (int)ms.Length - ms.Position);
-
-                    Console.WriteLine("Content");
-                    Console.WriteLine(ByteArrayToString(temp));
-
-                    BinaryReader br = new BinaryReader(ms);
-                    MemoryStream contentMs = new MemoryStream();
                     if (httpHeaders.ContainsKey("content-length"))
                     {
-                        byte[] buf = new byte[BUF_SIZE];
-                        int to_read = content_len;
-                        while (to_read > 0)
+                        content_len = Convert.ToInt32(httpHeaders["content-length"]);
+
+                        if (content_len > 20000)
                         {
-                            Console.WriteLine("starting Read, to_read={0}", to_read);
-
-                            int numread = br.Read(buf, 0, Math.Min(BUF_SIZE, to_read));
-
-                            Console.WriteLine("read finished, numread={0}", numread);
-
-                            if (numread == 0)
-                            {
-                                if (to_read == 0)
-                                {
-                                    break;
-                                }
-                                else
-                                {
-                                    throw new Exception("client disconnected during post");
-                                }
-                            }
-                            to_read -= numread;
-                            contentMs.Write(buf, 0, numread);
+                            throw new Exception(String.Format("POST Content-Length({0}) too big for this simple server", content_len));
                         }
-                        contentMs.Seek(0, SeekOrigin.Begin);
 
-                        Console.WriteLine($"Content Length: {contentMs.Length}");
+                        ms.Position = ms.Position - content_len;
+
+                        var temp = new byte[ms.Length - ms.Position];
+                        Array.Copy(ms.ToArray(), (int)ms.Position, temp, 0, (int)ms.Length - ms.Position);
+
+                        Console.WriteLine("Content");
+                        Console.WriteLine(ByteArrayToString(temp));
+
+                        BinaryReader br = new BinaryReader(ms);
+                        if (httpHeaders.ContainsKey("content-length"))
+                        {
+                            byte[] buf = new byte[BUF_SIZE];
+                            int to_read = content_len;
+                            while (to_read > 0)
+                            {
+                                Console.WriteLine("starting Read, to_read={0}", to_read);
+
+                                int numread = br.Read(buf, 0, Math.Min(BUF_SIZE, to_read));
+
+                                Console.WriteLine("read finished, numread={0}", numread);
+
+                                if (numread == 0)
+                                {
+                                    if (to_read == 0)
+                                    {
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        throw new Exception("client disconnected during post");
+                                    }
+                                }
+                                to_read -= numread;
+                                contentMs.Write(buf, 0, numread);
+                            }
+                            contentMs.Seek(0, SeekOrigin.Begin);
+
+                            Console.WriteLine($"Content Length: {contentMs.Length}");
+                        }
                     }
 
-                    byte[] result = null;
+                    Tuple<string, byte[]> result = null;
 
                     if (url == "pair-setup")
                     {
@@ -277,8 +279,14 @@ namespace ColdBear.ConsoleApp
                         PairVerifyController controller = new PairVerifyController();
                         result = controller.Post(contentMs.ToArray(), session);
                     }
+                    else if (url == "accessories")
+                    {
+                        AccessoriesController controller = new AccessoriesController();
+                        result = controller.Get(session);
+                    }
                     else
                     {
+                        Console.WriteLine($"Request for {url} is not yet supported!");
                         throw new Exception("Not Supported");
                     }
 
@@ -289,13 +297,13 @@ namespace ColdBear.ConsoleApp
                     returnChars[0] = 0x0D;
                     returnChars[1] = 0x0A;
 
-                    var contentLength = $"Content-Length: {result.Length}";
+                    var contentLength = $"Content-Length: {result.Item2.Length}";
 
                     response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.0 200 OK")).Concat(returnChars).ToArray();
                     response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
-                    response = response.Concat(Encoding.ASCII.GetBytes(@"Content-Type: application/pairing+tlv8")).Concat(returnChars).ToArray();
+                    response = response.Concat(Encoding.ASCII.GetBytes($"Content-Type: {result.Item1}")).Concat(returnChars).ToArray();
                     response = response.Concat(returnChars).ToArray();
-                    response = response.Concat(result).ToArray();
+                    response = response.Concat(result.Item2).ToArray();
 
                     if (session.IsVerified && !session.SkipFirstEncryption)
                     {
@@ -304,6 +312,21 @@ namespace ColdBear.ConsoleApp
                         Console.WriteLine("***********************");
                         Console.WriteLine("* ENCRYPTING RESPONSE *");
                         Console.WriteLine("***********************");
+
+                        var resultData = new byte[0];
+
+                        var dataLength = BitConverter.GetBytes((short)response.Length);
+
+                        resultData = resultData.Concat(dataLength).ToArray();
+
+                        var nonce = Cnv.FromHex("000000000000000000000000");
+
+                        // Use the AccessoryToController key to decrypt the data.
+                        //
+                        var authTag = new byte[16];
+                        var encryptedData = Aead.Encrypt(out authTag, response, session.AccessoryToControllerKey, nonce, dataLength, Aead.Algorithm.Chacha20_Poly1305);
+
+                        response = resultData.Concat(encryptedData).Concat(authTag).ToArray();
 
                         networkStream.Write(response, 0, response.Length);
                         networkStream.Flush();

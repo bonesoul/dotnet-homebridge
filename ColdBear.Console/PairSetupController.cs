@@ -31,7 +31,7 @@ namespace ColdBear.ConsoleApp
         private static System.Numerics.BigInteger server_B;
 
         //public Task<HttpResponseMessage> Post(byte[] body)
-        public byte[] Post(byte[] body)
+        public Tuple<string, byte[]> Post(byte[] body)
         {
             Debug.WriteLine($"Length of input is {body.Length} bytes");
 
@@ -97,7 +97,7 @@ namespace ColdBear.ConsoleApp
 
                 byte[] output = TLVParser.Serialise(responseTLV);
 
-                return output;
+                return new Tuple<string, byte[]>("application/pairing+tlv8", output);
 
                 //ByteArrayContent content = new ByteArrayContent(output);
                 //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
@@ -175,7 +175,7 @@ namespace ColdBear.ConsoleApp
 
                 byte[] output = TLVParser.Serialise(responseTLV);
 
-                return output;
+                return new Tuple<string, byte[]>("application/pairing+tlv8", output);
 
                 //ByteArrayContent content = new ByteArrayContent(output);
                 //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
@@ -669,7 +669,7 @@ namespace ColdBear.ConsoleApp
 
                     byte[] errorOutput = TLVParser.Serialise(errorTLV);
 
-                    return errorOutput;
+                    return new Tuple<string, byte[]>("application/pairing+tlv8", errorOutput);
 
                     //var errorContent = new ByteArrayContent(output);
                     //errorContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
@@ -811,7 +811,7 @@ namespace ColdBear.ConsoleApp
 
                 output = TLVParser.Serialise(responseTLV);
 
-                return output;
+                return new Tuple<string, byte[]>("application/pairing+tlv8", output);
 
                 //ByteArrayContent content = new ByteArrayContent(output);
                 //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");

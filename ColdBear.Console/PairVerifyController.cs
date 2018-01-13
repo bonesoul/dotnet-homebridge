@@ -16,7 +16,7 @@ namespace ColdBear.ConsoleApp
     public class PairVerifyController : ApiController
     {
         //public async Task<HttpResponseMessage> Post()
-        public byte[] Post(byte[] body, ControllerSession session)
+        public Tuple<string, byte[]> Post(byte[] body, ControllerSession session)
         {
             //var body = await Request.Content.ReadAsByteArrayAsync();
 
@@ -94,7 +94,7 @@ namespace ColdBear.ConsoleApp
 
                 var output = TLVParser.Serialise(responseTLV);
 
-                return output;
+                return new Tuple<string, byte[]>("application/pairing+tlv8", output);
 
                 //ByteArrayContent content = new ByteArrayContent(output);
                 //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
@@ -119,7 +119,7 @@ namespace ColdBear.ConsoleApp
 
                 var output = TLVParser.Serialise(responseTLV);
 
-                return output;
+                return new Tuple<string, byte[]>("application/pairing+tlv8", output);
 
                 //ByteArrayContent content = new ByteArrayContent(output);
                 //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
