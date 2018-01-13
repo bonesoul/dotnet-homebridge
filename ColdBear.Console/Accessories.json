@@ -1,4 +1,4 @@
-﻿{
+{
   "accessories": [
     {
       "aid": 1,
@@ -33,11 +33,10 @@
               "value": "Bridge1,1",
               "perms": [ "pr" ],
               "format": "string",
-              "iid": 2
+              "iid": 5
             },
             {
               "type": "14",
-              "value": null,
               "perms": [ "pw" ],
               "format": "bool",
               "iid": 6

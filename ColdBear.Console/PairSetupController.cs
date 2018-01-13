@@ -680,16 +680,6 @@ namespace ColdBear.ConsoleApp
                     //};
                 }
 
-                // Save the iOS Device's information.
-                //
-                LiteDB.LiteDatabase database = new LiteDB.LiteDatabase("Filename=Hap.db");
-
-                var pairingsCollection = database.GetCollection("pairings");
-
-                var pairing = new LiteDB.BsonDocument();
-                pairing.Add("identifier", new LiteDB.BsonValue(ltpk));
-                pairingsCollection.Insert(pairing);
-
                 Console.WriteLine("Step 5/6 is complete.");
 
                 Console.WriteLine("Pair Setup Step 6/6");

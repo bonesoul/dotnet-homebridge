@@ -12,7 +12,7 @@
         public byte[] AccessoryToControllerKey { get; internal set; }
         public byte[] ControllerToAccessoryKey { get; internal set; }
 
-        public int InboundBinaryMessageCount { get; set; }
-        public int OutboundBinaryMessageCount { get; set; }
+        public long InboundBinaryMessageCount { get; set; }
+        public long OutboundBinaryMessageCount { get; set; }
     }
 }

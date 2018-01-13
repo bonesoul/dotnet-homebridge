@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
@@ -14,7 +13,7 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "B1:22:3D:E3:CE:D6";
+        public const string ID = "B6:22:3D:E3:CE:D6";
         
         
         static void Main(string[] args)
@@ -154,8 +153,7 @@ namespace ColdBear.ConsoleApp
                             byte[] authTag = new byte[16];
                             Buffer.BlockCopy(content, offset, authTag, 0, 16);
 
-                            // TODO Use the inbound message count!
-                            var nonce = Cnv.FromHex("000000000000000000000000");
+                            var nonce = Cnv.FromHex("00000000").Concat(BitConverter.GetBytes(session.InboundBinaryMessageCount++)).ToArray();
 
                             // Use the AccessoryToController key to decrypt the data.
                             //
@@ -188,7 +186,6 @@ namespace ColdBear.ConsoleApp
 
                     while ((line = sr.ReadLine()) != null)
                     {
-                        Console.WriteLine($"Current Position: {ms.Position}");
                         if (line.Equals(""))
                         {
                             Console.WriteLine("got headers");
@@ -286,6 +283,11 @@ namespace ColdBear.ConsoleApp
                         AccessoriesController controller = new AccessoriesController();
                         result = controller.Get(session);
                     }
+                    else if (url == "pairings")
+                    {
+                        PairingsController controller = new PairingsController();
+                        result = controller.Post(contentMs.ToArray(), session);
+                    }
                     else
                     {
                         Console.WriteLine($"Request for {url} is not yet supported!");
@@ -325,8 +327,7 @@ namespace ColdBear.ConsoleApp
 
                             resultData = resultData.Concat(dataLength).ToArray();
 
-                            // TODO Use the outbound message count!
-                            var nonce = Cnv.FromHex("000000000000000000000000");
+                            var nonce = Cnv.FromHex("00000000").Concat(BitConverter.GetBytes(session.OutboundBinaryMessageCount++)).ToArray();
 
                             var dataToEncrypt = new byte[length];
                             Array.Copy(response, offset, dataToEncrypt, 0, length);

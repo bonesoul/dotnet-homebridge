@@ -11,6 +11,10 @@ namespace ColdBear.ConsoleApp
         public Tuple<string, byte[]> Get(ControllerSession session)
         {
             var output = File.ReadAllBytes("accessories.json");
+
+            Console.WriteLine("Accessories JSON");
+            Console.WriteLine(Encoding.UTF8.GetString(output));
+
             return new Tuple<string, byte[]>("application/hap+json", output);
         }
     }

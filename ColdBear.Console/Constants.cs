@@ -10,7 +10,8 @@
         EncryptedData = 5,
         State = 6,
         Error = 7,
-        Signature = 10
+        Signature = 10,
+        Permissions = 11
     }
 
     public enum ErrorCodes
