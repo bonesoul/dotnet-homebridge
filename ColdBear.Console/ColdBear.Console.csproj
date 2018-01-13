@@ -294,6 +294,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Accessories.json" />
     <Content Include="bin\Debug\x64\libsodium.dll" />
     <Content Include="bin\Debug\x86\libsodium.dll" />
     <Content Include="Crypto\NaCl\Internal\Salsa\replace regex.txt" />
