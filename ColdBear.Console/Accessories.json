@@ -1,4 +1,4 @@
-{
+﻿{
   "accessories": [
     {
       "aid": 1,
@@ -10,34 +10,44 @@
             {
               "type": "23",
               "value": "Acme Light Bridge",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 2
             },
             {
               "type": "20",
               "value": "Acme",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 3
             },
             {
               "type": "30",
               "value": "037A2BABF19D",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 4
             },
             {
               "type": "21",
               "value": "Bridge1,1",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 5
             },
             {
               "type": "14",
-              "perms": [ "pw" ],
+              "perms": [
+                "pw"
+              ],
               "format": "bool",
               "iid": 6
             }
@@ -55,34 +65,44 @@
             {
               "type": "23",
               "value": "Lightbulb",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 2
             },
             {
               "type": "20",
               "value": "Acme",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 3
             },
             {
               "type": "30",
               "value": "037A2BABF19E",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 4
             },
             {
               "type": "21",
               "value": "Bulb1,1",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 5
             },
             {
               "type": "14",
-              "perms": [ "pw" ],
+              "perms": [
+                "pw"
+              ],
               "format": "bool",
               "iid": 6
             }
@@ -95,7 +115,10 @@
             {
               "type": "25",
               "value": false,
-              "perms": [ "pr", "pw" ],
+              "perms": [
+                "pr",
+                "pw"
+              ],
               "format": "bool",
               "iid": 8
             }
@@ -112,35 +135,45 @@
           "characteristics": [
             {
               "type": "23",
-              "value": "Sensor",
-              "perms": [ "pr" ],
+              "value": "Acme Occupancy Sensor",
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 2
             },
             {
               "type": "20",
               "value": "Acme",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 3
             },
             {
               "type": "30",
-              "value": "037A2BABF19F",
-              "perms": [ "pr" ],
+              "value": "037A2BABF19E",
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 4
             },
             {
               "type": "21",
               "value": "Sensor1,1",
-              "perms": [ "pr" ],
+              "perms": [
+                "pr"
+              ],
               "format": "string",
               "iid": 5
             },
             {
               "type": "14",
-              "perms": [ "pw" ],
+              "perms": [
+                "pw"
+              ],
               "format": "bool",
               "iid": 6
             }
@@ -153,8 +186,14 @@
             {
               "type": "71",
               "value": 0,
-              "perms": [ "pr", "pw" ],
+              "perms": [
+                "ev", "pr"
+              ],
+              "ev": true,
               "format": "uint8",
+              "maxValue":1,
+              "minValue":0,
+              "minStep":1,
               "iid": 8
             }
           ]

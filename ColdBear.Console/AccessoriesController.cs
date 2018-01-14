@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Web.Http;
@@ -10,6 +9,11 @@ namespace ColdBear.ConsoleApp
     {
         public Tuple<string, byte[]> Get(ControllerSession session)
         {
+            Console.WriteLine("**************************");
+            Console.WriteLine("* Accessories Controller *");
+            Console.WriteLine("* List accessories       *");
+            Console.WriteLine("**************************");
+
             var output = File.ReadAllBytes(@"C:\Development\dotnet-homebridge\ColdBear.Console\accessories.json");
 
             Console.WriteLine("Accessories JSON");

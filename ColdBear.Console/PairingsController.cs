@@ -13,12 +13,20 @@ namespace ColdBear.ConsoleApp
             var state = parts.GetTypeAsInt(Constants.State);
             var method = parts.GetTypeAsInt(Constants.Method);
 
+            Console.WriteLine("***********************");
+            Console.WriteLine("* Pairings Controller *");
+            Console.WriteLine($"* State: {state}           *");
+            Console.WriteLine($"* Method: {state}         *");
+            Console.WriteLine("***********************");
+
             TLV responseTLV = new TLV();
 
             if (state == 1)
             {
                 if (method == 3) // Add Pairing
                 {
+                    Console.WriteLine("* Add Pairing");
+
                     var identifier = parts.GetType(Constants.Identifier);
                     var publickey = parts.GetType(Constants.PublicKey);
                     var permissions = parts.GetType(Constants.Permissions);
@@ -40,6 +48,10 @@ namespace ColdBear.ConsoleApp
 
                         pairingsCollection.Insert(pairing);
                     }
+                    else
+                    {
+                        // TODO DO something here.
+                    }
 
                     responseTLV.AddType(Constants.State, 2);
 
@@ -49,6 +61,8 @@ namespace ColdBear.ConsoleApp
                 }
                 else if (method == 4) // Remove Pairing
                 {
+                    Console.WriteLine("* Remove Pairing");
+
                     responseTLV = new TLV();
 
                     responseTLV.AddType(Constants.State, 2);
@@ -59,6 +73,8 @@ namespace ColdBear.ConsoleApp
                 }
                 if (method == 5) // List Pairing
                 {
+                    Console.WriteLine("* List Pairings");
+
                     responseTLV = new TLV();
 
                     responseTLV.AddType(Constants.State, 2);

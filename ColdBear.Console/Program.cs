@@ -13,9 +13,9 @@ namespace ColdBear.ConsoleApp
 {
     class Program
     {
-        public const string ID = "C1:22:3D:E3:CE:D6";
-        
-        
+        public const string ID = "C4:22:3D:E3:CE:D6";
+
+
         static void Main(string[] args)
         {
             var t1 = new Thread(() =>
@@ -31,7 +31,7 @@ namespace ColdBear.ConsoleApp
                 txtRecord.SetValue("id", ID);
                 txtRecord.SetValue("md", "Climenole");
                 txtRecord.SetValue("s#", "1");
-                txtRecord.SetValue("c#", "1");
+                txtRecord.SetValue("c#", "675");
 
                 var mgr = new DNSSDEventManager();
                 mgr.RecordRegistered += Mgr_RecordRegistered;
@@ -288,14 +288,28 @@ namespace ColdBear.ConsoleApp
                         PairingsController controller = new PairingsController();
                         result = controller.Post(contentMs.ToArray(), session);
                     }
-                    else if(url == "characteristics")
+                    else if (url.StartsWith("characteristics"))
                     {
                         // The url will contain a query string e.g. id=1.1 meaning accessoryId 1 with characteristic 1
                         //
-                        //GET, PUT verbs supported.
-                        //
+                        CharacteristicsController controller = new CharacteristicsController();
+                        if (method == "PUT")
+                        {
+                            result = controller.Put(contentMs.ToArray(), session);
+                        }
+                        else if(method == "GET")
+                        {
+                            var parts = url.Split('?');
 
+                            var accessoryString = parts[1].Replace("id=", "");
 
+                            var accessoryParts = accessoryString.Split('.');
+
+                            var aid = int.Parse(accessoryParts[0]);
+                            var iid = int.Parse(accessoryParts[1]);
+
+                            result = controller.Get(aid, iid, session);
+                        }
                     }
                     else
                     {
@@ -312,9 +326,17 @@ namespace ColdBear.ConsoleApp
 
                     var contentLength = $"Content-Length: {result.Item2.Length}";
 
-                    response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK")).Concat(returnChars).ToArray();
-                    response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
-                    response = response.Concat(Encoding.ASCII.GetBytes($"Content-Type: {result.Item1}")).Concat(returnChars).ToArray();
+                    if (result.Item2.Length == 0)
+                    {
+                        response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.1 204 No Content")).Concat(returnChars).ToArray();
+                    }
+                    else
+                    {
+                        response = response.Concat(Encoding.ASCII.GetBytes("HTTP/1.1 200 OK")).Concat(returnChars).ToArray();
+                        response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
+                        response = response.Concat(Encoding.ASCII.GetBytes($"Content-Type: {result.Item1}")).Concat(returnChars).ToArray();
+                    }
+
                     response = response.Concat(returnChars).ToArray();
                     response = response.Concat(result.Item2).ToArray();
 
