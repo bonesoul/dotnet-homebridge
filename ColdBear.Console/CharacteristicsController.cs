@@ -1,21 +1,33 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace ColdBear.ConsoleApp
 {
     public class CharacteristicsController
     {
-        public Tuple<string, byte[]> Get(int aid, int iid, ControllerSession session)
+        public Tuple<string, byte[]> Get(List<Tuple<int, int>> characteristics, ControllerSession session)
         {
             JArray characteristicsArray = new JArray();
-            JObject characteristicObject = new JObject();
-            characteristicObject.Add("aid", aid);
-            characteristicObject.Add("iid", iid);
 
-            characteristicObject.Add("value", 1);
+            foreach (var characteristic in characteristics)
+            {
+                JObject characteristicObject = new JObject();
+                characteristicObject.Add("aid", characteristic.Item1);
+                characteristicObject.Add("iid", characteristic.Item2);
 
-            characteristicsArray.Add(characteristicObject);
+                if (characteristic.Item1 == 2)
+                {
+                    characteristicObject.Add("value", true);
+                }
+                else if (characteristic.Item1 == 3)
+                {
+                    characteristicObject.Add("value", 1);
+                }
+
+                characteristicsArray.Add(characteristicObject);
+            }
 
             JObject jsonObj = new JObject();
             jsonObj.Add("characteristics", characteristicsArray);

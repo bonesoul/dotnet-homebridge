@@ -117,8 +117,10 @@
               "value": false,
               "perms": [
                 "pr",
-                "pw"
+                "pw",
+                "ev"
               ],
+              "ev": true,
               "format": "bool",
               "iid": 8
             }
@@ -185,7 +187,7 @@
           "characteristics": [
             {
               "type": "71",
-              "value": 0,
+              "value": 1,
               "perms": [
                 "ev", "pr"
               ],

@@ -31,7 +31,7 @@ namespace ColdBear.ConsoleApp
                 txtRecord.SetValue("id", ID);
                 txtRecord.SetValue("md", "Climenole");
                 txtRecord.SetValue("s#", "1");
-                txtRecord.SetValue("c#", "675");
+                txtRecord.SetValue("c#", "676");
 
                 var mgr = new DNSSDEventManager();
                 mgr.RecordRegistered += Mgr_RecordRegistered;
@@ -297,18 +297,29 @@ namespace ColdBear.ConsoleApp
                         {
                             result = controller.Put(contentMs.ToArray(), session);
                         }
-                        else if(method == "GET")
+                        else if (method == "GET")
                         {
                             var parts = url.Split('?');
 
-                            var accessoryString = parts[1].Replace("id=", "");
+                            var queryStringing = parts[1].Replace("id=", "");
 
-                            var accessoryParts = accessoryString.Split('.');
+                            var accessoriesParts = queryStringing.Split(',');
 
-                            var aid = int.Parse(accessoryParts[0]);
-                            var iid = int.Parse(accessoryParts[1]);
+                            List<Tuple<int, int>> accessories = new List<Tuple<int, int>>();
 
-                            result = controller.Get(aid, iid, session);
+                            foreach (var accessoryString in accessoriesParts)
+                            {
+                                var accessoryParts = accessoryString.Split('.');
+
+                                var aid = int.Parse(accessoryParts[0]);
+                                var iid = int.Parse(accessoryParts[1]);
+
+                                accessories.Add(new Tuple<int, int>(aid, iid));
+
+                            }
+
+                            result = controller.Get(accessories, session);
+
                         }
                     }
                     else
