@@ -191,6 +191,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccessoriesController.cs" />
+    <Compile Include="CharacteristicsController.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ControllerSession.cs" />
     <Compile Include="Crypto\NaCl\CryptoBytes.cs" />
