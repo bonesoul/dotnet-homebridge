@@ -1,5 +1,6 @@
 ﻿using Bonjour;
 using CryptoSysAPI;
+using Microsoft.Owin.Hosting;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,6 +16,8 @@ namespace ColdBear.ConsoleApp
     {
         public const string ID = "C4:22:3D:E3:CE:D6";
 
+        public static TcpClient CurrentlyConnectedController;
+        public static ControllerSession CurrentSession;
 
         static void Main(string[] args)
         {
@@ -44,17 +47,6 @@ namespace ColdBear.ConsoleApp
             });
             t1.Start();
 
-            //string baseAddress = "http://*:51826/";
-
-            //StartOptions options = new StartOptions();
-            //options.Urls.Add("http://*:51826");
-
-            //using (WebApp.Start(baseAddress))
-            //{
-            //    Console.WriteLine("Server started....");
-            //    Console.WriteLine("Press Enter to quit.");
-            //    Console.ReadLine();
-            //}
 
             var t2 = new Thread(async () =>
             {
@@ -73,6 +65,8 @@ namespace ColdBear.ConsoleApp
 
                     TcpClient client = await listener.AcceptTcpClientAsync();
 
+                    CurrentlyConnectedController = client;
+
                     Console.WriteLine("A Controller has connected!");
 
                     Thread clientThread = new Thread(new ParameterizedThreadStart(HandleClientConnection));
@@ -82,8 +76,17 @@ namespace ColdBear.ConsoleApp
 
             t2.Start();
 
-            Console.WriteLine("Press any key to terminate");
-            Console.ReadKey();
+            //Console.WriteLine("Press any key to terminate");
+            //Console.ReadKey();
+
+            string baseAddress = "http://*:51827/";
+
+            using (WebApp.Start(baseAddress))
+            {
+                Console.WriteLine("Server started....");
+                Console.WriteLine("Press Enter to quit.");
+                Console.ReadLine();
+            }
 
             t1.Join();
             t2.Join();
@@ -101,6 +104,8 @@ namespace ColdBear.ConsoleApp
             // output stream to write events to the controller.
             //
             ControllerSession session = new ControllerSession();
+
+            CurrentSession = session;
 
             using (var networkStream = tcpClient.GetStream())
             {
@@ -234,6 +239,7 @@ namespace ColdBear.ConsoleApp
                         Console.WriteLine(ByteArrayToString(temp));
 
                         BinaryReader br = new BinaryReader(ms);
+
                         if (httpHeaders.ContainsKey("content-length"))
                         {
                             byte[] buf = new byte[BUF_SIZE];

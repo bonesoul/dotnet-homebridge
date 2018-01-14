@@ -194,6 +194,7 @@
     <Compile Include="CharacteristicsController.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="ControllerSession.cs" />
+    <Compile Include="Controllers\ManagementController.cs" />
     <Compile Include="Crypto\NaCl\CryptoBytes.cs" />
     <Compile Include="Crypto\NaCl\Ed25519.cs" />
     <Compile Include="Crypto\NaCl\Internal\Array16.cs" />
