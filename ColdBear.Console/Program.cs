@@ -75,13 +75,15 @@ namespace ColdBear.ConsoleApp
 
             t2.Start();
 
+            ManualResetEvent killWebServerEvent = new ManualResetEvent(false);
+
             var t3 = new Thread(() => {
 
                 string baseAddress = "http://*:51827/";
 
                 using (WebApp.Start(baseAddress))
                 {
-                    Thread.Sleep(Timeout.Infinite);
+                    killWebServerEvent.WaitOne();
                 }
 
             });
@@ -90,6 +92,8 @@ namespace ColdBear.ConsoleApp
 
             Console.WriteLine("Press any key to terminate");
             Console.ReadKey();
+
+            killWebServerEvent.Set();
 
             t1.Join();
             t2.Join();
