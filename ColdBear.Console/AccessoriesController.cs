@@ -9,15 +9,13 @@ namespace ColdBear.ConsoleApp
     {
         public Tuple<string, byte[]> Get(ControllerSession session)
         {
-            Console.WriteLine("**************************");
-            Console.WriteLine("* Accessories Controller *");
-            Console.WriteLine("* List accessories       *");
-            Console.WriteLine("**************************");
+            Console.WriteLine("* Accessories Controller");
+            Console.WriteLine("* List accessories");
 
             var output = File.ReadAllBytes(@"C:\Development\dotnet-homebridge\ColdBear.Console\accessories.json");
 
-            Console.WriteLine("Accessories JSON");
-            Console.WriteLine(Encoding.UTF8.GetString(output));
+            //Console.WriteLine("Accessories JSON");
+            //Console.WriteLine(Encoding.UTF8.GetString(output));
 
             return new Tuple<string, byte[]>("application/hap+json", output);
         }

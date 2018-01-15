@@ -4,7 +4,6 @@ using Elliptic;
 using Org.BouncyCastle.Security;
 using SecurityDriven.Inferno.Kdf;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -15,23 +14,16 @@ namespace ColdBear.ConsoleApp
 {
     public class PairVerifyController : ApiController
     {
-        //public async Task<HttpResponseMessage> Post()
         public Tuple<string, byte[]> Post(byte[] body, ControllerSession session)
         {
-            //var body = await Request.Content.ReadAsByteArrayAsync();
-
-            Debug.WriteLine($"Length of input is {body.Length} bytes");
-
             var parts = TLVParser.Parse(body);
 
             var state = parts.GetTypeAsInt(Constants.State);
 
-            Debug.WriteLine($"Pair Setup: Status [{state}]");
-
             if (state == 1)
             {
-                Console.WriteLine("Pair Verify Step 1/4");
-                Console.WriteLine("Verify Start Request");
+                Console.WriteLine("* Pair Verify Step 1/4");
+                Console.WriteLine("* Verify Start Request");
 
                 var clientPublicKey = parts.GetType(Constants.PublicKey);
 
@@ -95,19 +87,11 @@ namespace ColdBear.ConsoleApp
                 var output = TLVParser.Serialise(responseTLV);
 
                 return new Tuple<string, byte[]>("application/pairing+tlv8", output);
-
-                //ByteArrayContent content = new ByteArrayContent(output);
-                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                //{
-                //    Content = content
-                //};
             }
             else if (state == 3)
             {
-                Console.WriteLine("Pair Verify Step 3/4");
-                Console.WriteLine("Verify Start Request");
+                Console.WriteLine("* Pair Verify Step 3/4");
+                Console.WriteLine("* Verify Start Request");
 
                 // We're looking good here. Need to set the encryption/settings on this session.
                 //
@@ -120,17 +104,8 @@ namespace ColdBear.ConsoleApp
                 var output = TLVParser.Serialise(responseTLV);
 
                 return new Tuple<string, byte[]>("application/pairing+tlv8", output);
-
-                //ByteArrayContent content = new ByteArrayContent(output);
-                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                //{
-                //    Content = content
-                //};
             }
 
-            //return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest);
             return null;
         }
 

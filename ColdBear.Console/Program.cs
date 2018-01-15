@@ -47,11 +47,10 @@ namespace ColdBear.ConsoleApp
             });
             t1.Start();
 
-
             var t2 = new Thread(async () =>
             {
                 IPAddress address = IPAddress.Any;
-                IPEndPoint port = new IPEndPoint(address, 51826); //port 9999
+                IPEndPoint port = new IPEndPoint(address, 51826);
 
                 TcpListener listener = new TcpListener(port);
 
@@ -76,20 +75,25 @@ namespace ColdBear.ConsoleApp
 
             t2.Start();
 
-            //Console.WriteLine("Press any key to terminate");
-            //Console.ReadKey();
+            var t3 = new Thread(() => {
 
-            string baseAddress = "http://*:51827/";
+                string baseAddress = "http://*:51827/";
 
-            using (WebApp.Start(baseAddress))
-            {
-                Console.WriteLine("Server started....");
-                Console.WriteLine("Press Enter to quit.");
-                Console.ReadLine();
-            }
+                using (WebApp.Start(baseAddress))
+                {
+                    Thread.Sleep(Timeout.Infinite);
+                }
+
+            });
+
+            t3.Start();
+
+            Console.WriteLine("Press any key to terminate");
+            Console.ReadKey();
 
             t1.Join();
             t2.Join();
+            t3.Join();
         }
 
         private static void HandleClientConnection(object obj)
@@ -121,6 +125,8 @@ namespace ColdBear.ConsoleApp
                     //
                     var bytesRead = networkStream.Read(receiveBuffer, 0, (int)tcpClient.ReceiveBufferSize);
 
+                    Console.WriteLine("**************************** REQUEST RECEIVED *************************");
+
                     if (bytesRead == 0)
                     {
                         // Read returns 0 if the client closes the connection.
@@ -132,9 +138,7 @@ namespace ColdBear.ConsoleApp
 
                     if (session.IsVerified)
                     {
-                        Console.WriteLine("**********************");
                         Console.WriteLine("* DECRYPTING REQUEST *");
-                        Console.WriteLine("**********************");
 
                         var encryptionResult = new byte[0];
 
@@ -193,8 +197,7 @@ namespace ColdBear.ConsoleApp
                     {
                         if (line.Equals(""))
                         {
-                            Console.WriteLine("got headers");
-                            break; ;
+                            break;
                         }
 
                         int separator = line.IndexOf(':');
@@ -210,16 +213,15 @@ namespace ColdBear.ConsoleApp
                         }
 
                         string value = line.Substring(pos, line.Length - pos);
-                        Console.WriteLine("header: {0}:{1}", name, value);
+                        Console.WriteLine("* Header: {0}:{1}", name, value);
                         httpHeaders[name.ToLower()] = value;
                     }
+
+                    Console.WriteLine($"* URL: {url}");
 
                     int BUF_SIZE = 4096;
                     int content_len = 0;
                     MemoryStream contentMs = new MemoryStream();
-
-                    Console.WriteLine("Input");
-                    Console.WriteLine(ByteArrayToString(ms.ToArray()));
 
                     if (httpHeaders.ContainsKey("content-length"))
                     {
@@ -235,9 +237,6 @@ namespace ColdBear.ConsoleApp
                         var temp = new byte[ms.Length - ms.Position];
                         Array.Copy(ms.ToArray(), (int)ms.Position, temp, 0, (int)ms.Length - ms.Position);
 
-                        Console.WriteLine("Content");
-                        Console.WriteLine(ByteArrayToString(temp));
-
                         BinaryReader br = new BinaryReader(ms);
 
                         if (httpHeaders.ContainsKey("content-length"))
@@ -246,11 +245,7 @@ namespace ColdBear.ConsoleApp
                             int to_read = content_len;
                             while (to_read > 0)
                             {
-                                Console.WriteLine("starting Read, to_read={0}", to_read);
-
                                 int numread = br.Read(buf, 0, Math.Min(BUF_SIZE, to_read));
-
-                                Console.WriteLine("read finished, numread={0}", numread);
 
                                 if (numread == 0)
                                 {
@@ -263,12 +258,13 @@ namespace ColdBear.ConsoleApp
                                         throw new Exception("client disconnected during post");
                                     }
                                 }
+
                                 to_read -= numread;
+
                                 contentMs.Write(buf, 0, numread);
                             }
-                            contentMs.Seek(0, SeekOrigin.Begin);
 
-                            Console.WriteLine($"Content Length: {contentMs.Length}");
+                            contentMs.Seek(0, SeekOrigin.Begin);
                         }
                     }
 
@@ -325,12 +321,11 @@ namespace ColdBear.ConsoleApp
                             }
 
                             result = controller.Get(accessories, session);
-
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"Request for {url} is not yet supported!");
+                        Console.WriteLine($"* Request for {url} is not yet supported!");
                         throw new Exception("Not Supported");
                     }
 
@@ -361,9 +356,7 @@ namespace ColdBear.ConsoleApp
                     {
                         // We need to decrypt the request!
                         //
-                        Console.WriteLine("***********************");
-                        Console.WriteLine("* ENCRYPTING RESPONSE *");
-                        Console.WriteLine("***********************");
+                        Console.WriteLine("* ENCRYPTING RESPONSE");
 
                         var resultData = new byte[0];
 
@@ -405,6 +398,8 @@ namespace ColdBear.ConsoleApp
                             session.SkipFirstEncryption = false;
                         }
                     }
+
+                    Console.WriteLine("**************************** RESPONSE SENT ******************************");
                 }
             }
 

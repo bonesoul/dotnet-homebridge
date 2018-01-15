@@ -18,9 +18,9 @@ namespace ColdBear.ConsoleApp
 
             config.Routes.MapHttpRoute("Management", "management", new { controller = "management" });
 
-            SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
-            traceWriter.IsVerbose = true;
-            traceWriter.MinimumLevel = TraceLevel.Debug;
+            //SystemDiagnosticsTraceWriter traceWriter = config.EnableSystemDiagnosticsTracing();
+            //traceWriter.IsVerbose = true;
+            //traceWriter.MinimumLevel = TraceLevel.Debug;
 
             //appBuilder.Use(typeof(HeaderChangeMiddleware));
 
