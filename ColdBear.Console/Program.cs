@@ -1,6 +1,5 @@
 ﻿using Bonjour;
 using CryptoSysAPI;
-using Microsoft.Owin.Hosting;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,13 +33,13 @@ namespace ColdBear.ConsoleApp
                 DNSSDService service = new DNSSDService();
 
                 TXTRecord txtRecord = new TXTRecord();
-                txtRecord.SetValue("sf", "0"); // 1 means discoverable. 0 means it has been paired.
+                txtRecord.SetValue("sf", "1"); // 1 means discoverable. 0 means it has been paired.
                 txtRecord.SetValue("ff", "0x00");
                 txtRecord.SetValue("ci", "2");
                 txtRecord.SetValue("id", ID);
                 txtRecord.SetValue("md", "Climenole");
                 txtRecord.SetValue("s#", "1");
-                txtRecord.SetValue("c#", "676");
+                txtRecord.SetValue("c#", "678");
 
                 var mgr = new DNSSDEventManager();
                 mgr.RecordRegistered += Mgr_RecordRegistered;
@@ -106,8 +105,6 @@ namespace ColdBear.ConsoleApp
 
                         TcpClient client = managementListener.AcceptTcpClient();
 
-                        CurrentlyConnectedController = client;
-
                         Console.WriteLine("A manager has connected!");
 
                         Thread clientThread = new Thread(new ParameterizedThreadStart(HandleManagerConnection));
@@ -118,7 +115,7 @@ namespace ColdBear.ConsoleApp
                 }
             });
 
-            //t3.Start();
+            t3.Start();
 
             Console.WriteLine("Press any key to terminate");
             Console.ReadKey();
@@ -139,11 +136,8 @@ namespace ColdBear.ConsoleApp
 
             string clientEndPoint = tcpClient.Client.RemoteEndPoint.ToString();
 
-            Console.WriteLine($"Handling a new connection from {clientEndPoint}");
+            Console.WriteLine($"Handling a new controller connection from {clientEndPoint}");
 
-            // TODO We might want to put this somewhere else, so that we can access the 
-            // output stream to write events to the controller.
-            //
             ControllerSession session = new ControllerSession();
 
             CurrentSession = session;
@@ -597,58 +591,23 @@ namespace ColdBear.ConsoleApp
                     throw new Exception("Not Supported");
                 }
 
-                // Construct the response. We're assuming 100% success, all of the time, for now.
-                //
-                var response = new byte[0];
+                if (result.Length != 0)
+                {
+                    CurrentlyConnectedController.GetStream().Write(result, 0, result.Length);
+                    CurrentlyConnectedController.GetStream().Flush();
+                }
+
                 var returnChars = new byte[2];
                 returnChars[0] = 0x0D;
                 returnChars[1] = 0x0A;
 
-                var contentLength = $"Content-Length: {result.Length}";
+                var response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK").Concat(returnChars).ToArray();
+                response = response.Concat(Encoding.ASCII.GetBytes("Content-Length: 0")).Concat(returnChars).ToArray();
+                response = response.Concat(returnChars).ToArray();
 
-                if (result.Length == 0)
-                {
-                    throw new Exception();
-                }
-
-                if (CurrentSession.IsVerified)
-                {
-                    // We need to decrypt the request!
-                    //
-                    Console.WriteLine("* ENCRYPTING RESPONSE");
-
-                    var resultData = new byte[0];
-
-                    for (int offset = 0; offset < response.Length;)
-                    {
-                        int length = Math.Min(response.Length - offset, 1024);
-
-                        var dataLength = BitConverter.GetBytes((short)length);
-
-                        resultData = resultData.Concat(dataLength).ToArray();
-
-                        var nonce = Cnv.FromHex("00000000").Concat(BitConverter.GetBytes(CurrentSession.OutboundBinaryMessageCount++)).ToArray();
-
-                        var dataToEncrypt = new byte[length];
-                        Array.Copy(response, offset, dataToEncrypt, 0, length);
-
-                        // Use the AccessoryToController key to decrypt the data.
-                        //
-                        var authTag = new byte[16];
-                        var encryptedData = Aead.Encrypt(out authTag, dataToEncrypt, CurrentSession.AccessoryToControllerKey, nonce, dataLength, Aead.Algorithm.Chacha20_Poly1305);
-
-                        resultData = resultData.Concat(encryptedData).Concat(authTag).ToArray();
-
-                        offset += length;
-                    }
-
-                    response = resultData;
-
-                    networkStream.Write(response, 0, response.Length);
-                    networkStream.Flush();
-                }
-
-                Console.WriteLine("**************************** RESPONSE SENT ******************************");
+                networkStream.Write(response, 0, response.Length);
+                networkStream.Flush();
+                Console.WriteLine("**************************** EVENT SENT ******************************");
             }
 
             tcpClient.Close();
