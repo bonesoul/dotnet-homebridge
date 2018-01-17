@@ -60,9 +60,7 @@ namespace ColdBear.ConsoleApp
             response = response.Concat(returnChars).ToArray();
             response = response.Concat(output).ToArray();
 
-            Console.WriteLine("********************");
-            Console.WriteLine("* ENCRYPTING EVENT *");
-            Console.WriteLine("********************");
+            Console.WriteLine("* ENCRYPTING EVENT");
 
             var resultData = new byte[0];
 

@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Web;
 
 namespace ColdBear.ConsoleApp
 {
@@ -133,6 +134,10 @@ namespace ColdBear.ConsoleApp
         private static void HandleControllerConnection(object obj)
         {
             TcpClient tcpClient = (TcpClient)obj;
+
+            // Set keepalive to true!
+            //
+            //tcpClient.Client.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.KeepAlive, true);
 
             string clientEndPoint = tcpClient.Client.RemoteEndPoint.ToString();
 
@@ -563,28 +568,13 @@ namespace ColdBear.ConsoleApp
 
                 if (url.StartsWith("accessories"))
                 {
+                    var parts = url.Split('?');
+                    var queryString = HttpUtility.ParseQueryString(parts[1]);
+
+                    var value = int.Parse(queryString["value"]);
                     AccessoriesController controller = new AccessoriesController();
-                    result = controller.Put(CurrentSession, 3, 8, 0);
+                    result = controller.Put(CurrentSession, 3, 8, value);
                 }
-                //var parts = url.Split('?');
-
-                //var queryStringing = parts[1].Replace("id=", "");
-
-                //var accessoriesParts = queryStringing.Split(',');
-
-                //List<Tuple<int, int>> accessories = new List<Tuple<int, int>>();
-
-                //foreach (var accessoryString in accessoriesParts)
-                //{
-                //    var accessoryParts = accessoryString.Split('.');
-
-                //    var aid = int.Parse(accessoryParts[0]);
-                //    var iid = int.Parse(accessoryParts[1]);
-
-                //    accessories.Add(new Tuple<int, int>(aid, iid));
-
-                //}
-
                 else
                 {
                     Console.WriteLine($"* Request for {url} is not yet supported!");
@@ -601,7 +591,7 @@ namespace ColdBear.ConsoleApp
                 returnChars[0] = 0x0D;
                 returnChars[1] = 0x0A;
 
-                var response = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK").Concat(returnChars).ToArray();
+                var response = Encoding.ASCII.GetBytes("HTTP/1.1 204 OK").Concat(returnChars).ToArray();
                 response = response.Concat(Encoding.ASCII.GetBytes("Content-Length: 0")).Concat(returnChars).ToArray();
                 response = response.Concat(returnChars).ToArray();
 
