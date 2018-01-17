@@ -21,14 +21,20 @@ namespace ColdBear.ConsoleApp
 
         static void Main(string[] args)
         {
+            bool run = true;
+
+            TcpListener controllerListener = null;
+            TcpListener managementListener = null;
+
             var t1 = new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
+                Thread.CurrentThread.Name = "Advertising";
 
                 DNSSDService service = new DNSSDService();
 
                 TXTRecord txtRecord = new TXTRecord();
-                txtRecord.SetValue("sf", "1"); // 1 means discoverable. 0 means it has been paired.
+                txtRecord.SetValue("sf", "0"); // 1 means discoverable. 0 means it has been paired.
                 txtRecord.SetValue("ff", "0x00");
                 txtRecord.SetValue("ci", "2");
                 txtRecord.SetValue("id", ID);
@@ -47,60 +53,87 @@ namespace ColdBear.ConsoleApp
             });
             t1.Start();
 
-            var t2 = new Thread(async () =>
+            var t2 = new Thread(() =>
             {
+                Thread.CurrentThread.IsBackground = true;
+                Thread.CurrentThread.Name = "Controller Port";
+
                 IPAddress address = IPAddress.Any;
                 IPEndPoint port = new IPEndPoint(address, 51826);
 
-                TcpListener listener = new TcpListener(port);
+                controllerListener = new TcpListener(port);
+                controllerListener.Start();
 
-                listener.Start();
+                Console.WriteLine("--Controller Server Started--");
 
-                Console.WriteLine("--Server Started--");
-
-                while (true) //loop forever
+                while (run) //loop forever
                 {
-                    Console.WriteLine("Waiting for New Controller to connect");
+                    try
+                    {
+                        Console.WriteLine("Waiting for Controller to connect");
 
-                    TcpClient client = await listener.AcceptTcpClientAsync();
+                        TcpClient client = controllerListener.AcceptTcpClient();
 
-                    CurrentlyConnectedController = client;
+                        CurrentlyConnectedController = client;
 
-                    Console.WriteLine("A Controller has connected!");
+                        Console.WriteLine("A Controller has connected!");
 
-                    Thread clientThread = new Thread(new ParameterizedThreadStart(HandleClientConnection));
-                    clientThread.Start(client);
+                        Thread clientThread = new Thread(new ParameterizedThreadStart(HandleControllerConnection));
+                        clientThread.Start(client);
+                    }
+                    catch
+                    { }
                 }
             });
 
             t2.Start();
 
-            ManualResetEvent killWebServerEvent = new ManualResetEvent(false);
+            var t3 = new Thread(() =>
+            {
+                IPAddress address = IPAddress.Any;
+                IPEndPoint port = new IPEndPoint(address, 51827);
 
-            var t3 = new Thread(() => {
+                managementListener = new TcpListener(port);
+                managementListener.Start();
 
-                string baseAddress = "http://*:51827/";
+                Console.WriteLine("--Management Server Started--");
 
-                using (WebApp.Start(baseAddress))
+                while (run) //loop forever
                 {
-                    killWebServerEvent.WaitOne();
-                }
+                    try
+                    {
+                        Console.WriteLine("Waiting for Manager to connect");
 
+                        TcpClient client = managementListener.AcceptTcpClient();
+
+                        CurrentlyConnectedController = client;
+
+                        Console.WriteLine("A manager has connected!");
+
+                        Thread clientThread = new Thread(new ParameterizedThreadStart(HandleManagerConnection));
+                        clientThread.Start(client);
+                    }
+                    catch
+                    { }
+                }
             });
 
-            t3.Start();
+            //t3.Start();
 
             Console.WriteLine("Press any key to terminate");
             Console.ReadKey();
 
-            killWebServerEvent.Set();
+            run = false;
 
-            t1.Join();
-            t2.Join();
-            t3.Join();
+            managementListener?.Stop();
+            controllerListener?.Stop();
+
+            t1?.Join();
+            t2?.Join();
+            t3?.Join();
         }
 
-        private static void HandleClientConnection(object obj)
+        private static void HandleControllerConnection(object obj)
         {
             TcpClient tcpClient = (TcpClient)obj;
 
@@ -408,6 +441,215 @@ namespace ColdBear.ConsoleApp
             }
 
             Console.WriteLine($"Connection from {clientEndPoint} will be closed!");
+
+            tcpClient.Close();
+            tcpClient.Dispose();
+        }
+
+        private static void HandleManagerConnection(object obj)
+        {
+            TcpClient tcpClient = (TcpClient)obj;
+
+            string clientEndPoint = tcpClient.Client.RemoteEndPoint.ToString();
+
+            Console.WriteLine($"Handling a new connection from {clientEndPoint}");
+
+            using (var networkStream = tcpClient.GetStream())
+            {
+                byte[] receiveBuffer = new byte[tcpClient.ReceiveBufferSize];
+
+                // This is blocking and will wait for data to come from the client.
+                //
+                var bytesRead = networkStream.Read(receiveBuffer, 0, (int)tcpClient.ReceiveBufferSize);
+
+                Console.WriteLine("**************************** MANAGEMENT REQUEST RECEIVED *************************");
+
+                if (bytesRead == 0)
+                {
+                    // Read returns 0 if the client closes the connection.
+                    //
+                    return;
+                }
+
+                var content = receiveBuffer.CopySlice(0, bytesRead);
+
+                var ms = new MemoryStream(content);
+                StreamReader sr = new StreamReader(ms);
+
+                String request = sr.ReadLine();
+                string[] tokens = request.Split(' ');
+                if (tokens.Length != 3)
+                {
+                    throw new Exception("Invalid HTTP request line");
+                }
+                var method = tokens[0].ToUpper();
+                var url = tokens[1].Trim('/');
+                var version = tokens[2];
+
+                string line;
+
+                Dictionary<string, string> httpHeaders = new Dictionary<string, string>();
+
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Equals(""))
+                    {
+                        break;
+                    }
+
+                    int separator = line.IndexOf(':');
+                    if (separator == -1)
+                    {
+                        throw new Exception("invalid http header line: " + line);
+                    }
+                    String name = line.Substring(0, separator);
+                    int pos = separator + 1;
+                    while ((pos < line.Length) && (line[pos] == ' '))
+                    {
+                        pos++; // strip any spaces
+                    }
+
+                    string value = line.Substring(pos, line.Length - pos);
+                    Console.WriteLine("* Header: {0}:{1}", name, value);
+                    httpHeaders[name.ToLower()] = value;
+                }
+
+                Console.WriteLine($"* URL: {url}");
+
+                int BUF_SIZE = 4096;
+                int content_len = 0;
+                MemoryStream contentMs = new MemoryStream();
+
+                if (httpHeaders.ContainsKey("content-length"))
+                {
+                    content_len = Convert.ToInt32(httpHeaders["content-length"]);
+
+                    if (content_len > 20000)
+                    {
+                        throw new Exception(String.Format("POST Content-Length({0}) too big for this simple server", content_len));
+                    }
+
+                    ms.Position = ms.Position - content_len;
+
+                    var temp = new byte[ms.Length - ms.Position];
+                    Array.Copy(ms.ToArray(), (int)ms.Position, temp, 0, (int)ms.Length - ms.Position);
+
+                    BinaryReader br = new BinaryReader(ms);
+
+                    if (httpHeaders.ContainsKey("content-length"))
+                    {
+                        byte[] buf = new byte[BUF_SIZE];
+                        int to_read = content_len;
+                        while (to_read > 0)
+                        {
+                            int numread = br.Read(buf, 0, Math.Min(BUF_SIZE, to_read));
+
+                            if (numread == 0)
+                            {
+                                if (to_read == 0)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    throw new Exception("client disconnected during post");
+                                }
+                            }
+
+                            to_read -= numread;
+
+                            contentMs.Write(buf, 0, numread);
+                        }
+
+                        contentMs.Seek(0, SeekOrigin.Begin);
+                    }
+                }
+
+                byte[] result = null;
+
+                if (url.StartsWith("accessories"))
+                {
+                    AccessoriesController controller = new AccessoriesController();
+                    result = controller.Put(CurrentSession, 3, 8, 0);
+                }
+                //var parts = url.Split('?');
+
+                //var queryStringing = parts[1].Replace("id=", "");
+
+                //var accessoriesParts = queryStringing.Split(',');
+
+                //List<Tuple<int, int>> accessories = new List<Tuple<int, int>>();
+
+                //foreach (var accessoryString in accessoriesParts)
+                //{
+                //    var accessoryParts = accessoryString.Split('.');
+
+                //    var aid = int.Parse(accessoryParts[0]);
+                //    var iid = int.Parse(accessoryParts[1]);
+
+                //    accessories.Add(new Tuple<int, int>(aid, iid));
+
+                //}
+
+                else
+                {
+                    Console.WriteLine($"* Request for {url} is not yet supported!");
+                    throw new Exception("Not Supported");
+                }
+
+                // Construct the response. We're assuming 100% success, all of the time, for now.
+                //
+                var response = new byte[0];
+                var returnChars = new byte[2];
+                returnChars[0] = 0x0D;
+                returnChars[1] = 0x0A;
+
+                var contentLength = $"Content-Length: {result.Length}";
+
+                if (result.Length == 0)
+                {
+                    throw new Exception();
+                }
+
+                if (CurrentSession.IsVerified)
+                {
+                    // We need to decrypt the request!
+                    //
+                    Console.WriteLine("* ENCRYPTING RESPONSE");
+
+                    var resultData = new byte[0];
+
+                    for (int offset = 0; offset < response.Length;)
+                    {
+                        int length = Math.Min(response.Length - offset, 1024);
+
+                        var dataLength = BitConverter.GetBytes((short)length);
+
+                        resultData = resultData.Concat(dataLength).ToArray();
+
+                        var nonce = Cnv.FromHex("00000000").Concat(BitConverter.GetBytes(CurrentSession.OutboundBinaryMessageCount++)).ToArray();
+
+                        var dataToEncrypt = new byte[length];
+                        Array.Copy(response, offset, dataToEncrypt, 0, length);
+
+                        // Use the AccessoryToController key to decrypt the data.
+                        //
+                        var authTag = new byte[16];
+                        var encryptedData = Aead.Encrypt(out authTag, dataToEncrypt, CurrentSession.AccessoryToControllerKey, nonce, dataLength, Aead.Algorithm.Chacha20_Poly1305);
+
+                        resultData = resultData.Concat(encryptedData).Concat(authTag).ToArray();
+
+                        offset += length;
+                    }
+
+                    response = resultData;
+
+                    networkStream.Write(response, 0, response.Length);
+                    networkStream.Flush();
+                }
+
+                Console.WriteLine("**************************** RESPONSE SENT ******************************");
+            }
 
             tcpClient.Close();
             tcpClient.Dispose();

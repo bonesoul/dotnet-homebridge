@@ -34,10 +34,9 @@ namespace ColdBear.ConsoleApp.Controllers
 
             var contentLength = $"Content-Length: {output.Length}";
 
-            response = response.Concat(Encoding.ASCII.GetBytes("EVENT/1.1 200 OK")).Concat(returnChars).ToArray();
-            response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
+            response = response.Concat(Encoding.ASCII.GetBytes("EVENT/1.0 200 OK")).Concat(returnChars).ToArray();
             response = response.Concat(Encoding.ASCII.GetBytes($"Content-Type: application/hap+json")).Concat(returnChars).ToArray();
-
+            response = response.Concat(Encoding.ASCII.GetBytes(contentLength)).Concat(returnChars).ToArray();
             response = response.Concat(returnChars).ToArray();
             response = response.Concat(output).ToArray();
 
