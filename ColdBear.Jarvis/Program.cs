@@ -1,5 +1,5 @@
-﻿using Bonjour;
-using CryptoSysAPI;
+﻿//using Bonjour;
+//using CryptoSysAPI;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Web;
 
-namespace ColdBear.HomeBridge
+namespace ColdBear.Jarvis
 {
     class Program
     {
@@ -21,116 +21,124 @@ namespace ColdBear.HomeBridge
 
         static void Main(string[] args)
         {
-            bool run = true;
+            //bool run = true;
 
-            TcpListener controllerListener = null;
-            TcpListener managementListener = null;
+            //TcpListener controllerListener = null;
+            //TcpListener managementListener = null;
 
             var t1 = new Thread(() =>
             {
                 Thread.CurrentThread.IsBackground = true;
                 Thread.CurrentThread.Name = "Advertising";
 
-                DNSSDService service = new DNSSDService();
+                mDNS.mDNSService service = new mDNS.mDNSService();
+                service.Start();
 
-                TXTRecord txtRecord = new TXTRecord();
-                txtRecord.SetValue("sf", "1"); // 1 means discoverable. 0 means it has been paired.
-                txtRecord.SetValue("ff", "0x00");
-                txtRecord.SetValue("ci", "2");
-                txtRecord.SetValue("id", ID);
-                txtRecord.SetValue("md", "Climenole");
-                txtRecord.SetValue("s#", "1");
-                txtRecord.SetValue("c#", "678");
+                //DNSSDService service = new DNSSDService();
 
-                var mgr = new DNSSDEventManager();
-                mgr.RecordRegistered += Mgr_RecordRegistered;
-                mgr.OperationFailed += Mgr_OperationFailed;
-                mgr.ServiceRegistered += Mgr_ServiceRegistered;
+                //TXTRecord txtRecord = new TXTRecord();
+                //txtRecord.SetValue("sf", "1"); // 1 means discoverable. 0 means it has been paired.
+                //txtRecord.SetValue("ff", "0x00");
+                //txtRecord.SetValue("ci", "2");
+                //txtRecord.SetValue("id", ID);
+                //txtRecord.SetValue("md", "Climenole");
+                //txtRecord.SetValue("s#", "1");
+                //txtRecord.SetValue("c#", "678");
 
-                var record = service.Register(0, 0, "Climenole", "_hap._tcp", null, null, 51826, txtRecord, mgr);
+                //var mgr = new DNSSDEventManager();
+                //mgr.RecordRegistered += Mgr_RecordRegistered;
+                //mgr.OperationFailed += Mgr_OperationFailed;
+                //mgr.ServiceRegistered += Mgr_ServiceRegistered;
 
-                Console.WriteLine("Advertising Service in background thread");
+                //var record = service.Register(0, 0, "Climenole", "_hap._tcp", null, null, 51826, txtRecord, mgr);
+
+                //Console.WriteLine("Advertising Service in background thread");
+
+
+
             });
+
             t1.Start();
 
-            var t2 = new Thread(() =>
-            {
-                Thread.CurrentThread.IsBackground = true;
-                Thread.CurrentThread.Name = "Controller Port";
+            //var t2 = new Thread(() =>
+            //{
+            //    Thread.CurrentThread.IsBackground = true;
+            //    Thread.CurrentThread.Name = "Controller Port";
 
-                IPAddress address = IPAddress.Any;
-                IPEndPoint port = new IPEndPoint(address, 51826);
+            //    IPAddress address = IPAddress.Any;
+            //    IPEndPoint port = new IPEndPoint(address, 51826);
 
-                controllerListener = new TcpListener(port);
-                controllerListener.Start();
+            //    controllerListener = new TcpListener(port);
+            //    controllerListener.Start();
 
-                Console.WriteLine("--Controller Server Started--");
+            //    Console.WriteLine("--Controller Server Started--");
 
-                while (run) //loop forever
-                {
-                    try
-                    {
-                        Console.WriteLine("Waiting for Controller to connect");
+            //    while (run) //loop forever
+            //    {
+            //        try
+            //        {
+            //            Console.WriteLine("Waiting for Controller to connect");
 
-                        TcpClient client = controllerListener.AcceptTcpClient();
+            //            TcpClient client = controllerListener.AcceptTcpClient();
 
-                        CurrentlyConnectedController = client;
+            //            CurrentlyConnectedController = client;
 
-                        Console.WriteLine("A Controller has connected!");
+            //            Console.WriteLine("A Controller has connected!");
 
-                        Thread clientThread = new Thread(new ParameterizedThreadStart(HandleControllerConnection));
-                        clientThread.Start(client);
-                    }
-                    catch
-                    { }
-                }
-            });
+            //            Thread clientThread = new Thread(new ParameterizedThreadStart(HandleControllerConnection));
+            //            clientThread.Start(client);
+            //        }
+            //        catch
+            //        { }
+            //    }
+            //});
 
-            t2.Start();
+            //t2.Start();
 
-            var t3 = new Thread(() =>
-            {
-                IPAddress address = IPAddress.Any;
-                IPEndPoint port = new IPEndPoint(address, 51827);
+            //var t3 = new Thread(() =>
+            //{
+            //    IPAddress address = IPAddress.Any;
+            //    IPEndPoint port = new IPEndPoint(address, 51827);
 
-                managementListener = new TcpListener(port);
-                managementListener.Start();
+            //    managementListener = new TcpListener(port);
+            //    managementListener.Start();
 
-                Console.WriteLine("--Management Server Started--");
+            //    Console.WriteLine("--Management Server Started--");
 
-                while (run) //loop forever
-                {
-                    try
-                    {
-                        Console.WriteLine("Waiting for Manager to connect");
+            //    while (run) //loop forever
+            //    {
+            //        try
+            //        {
+            //            Console.WriteLine("Waiting for Manager to connect");
 
-                        TcpClient client = managementListener.AcceptTcpClient();
+            //            TcpClient client = managementListener.AcceptTcpClient();
 
-                        Console.WriteLine("A manager has connected!");
+            //            Console.WriteLine("A manager has connected!");
 
-                        Thread clientThread = new Thread(new ParameterizedThreadStart(HandleManagerConnection));
-                        clientThread.Start(client);
-                    }
-                    catch
-                    { }
-                }
-            });
+            //            Thread clientThread = new Thread(new ParameterizedThreadStart(HandleManagerConnection));
+            //            clientThread.Start(client);
+            //        }
+            //        catch
+            //        { }
+            //    }
+            //});
 
-            t3.Start();
+            //t3.Start();
 
             Console.WriteLine("Press any key to terminate");
-            Console.ReadKey();
+            Console.Read();
 
-            run = false;
+            //run = false;
 
-            managementListener?.Stop();
-            controllerListener?.Stop();
+            //managementListener?.Stop();
+            //controllerListener?.Stop();
 
             t1?.Join();
-            t2?.Join();
-            t3?.Join();
+            //t2?.Join();
+            //t3?.Join();
         }
 
+        /*
         private static void HandleControllerConnection(object obj)
         {
             TcpClient tcpClient = (TcpClient)obj;
@@ -629,5 +637,6 @@ namespace ColdBear.HomeBridge
         {
             Console.WriteLine("Record registered");
         }
+        */
     }
 }
