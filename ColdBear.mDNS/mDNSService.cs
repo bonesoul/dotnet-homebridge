@@ -132,7 +132,7 @@ namespace ColdBear.mDNS
 
                     bitArray.CopyTo(flags, 0);
 
-                    var answerCount = BitConverter.GetBytes((short)1);
+                    var answerCount = BitConverter.GetBytes((short)1).Reverse().ToArray();
                     var otherCounts = BitConverter.GetBytes((short)0);
 
                     // Set the header
@@ -145,19 +145,19 @@ namespace ColdBear.mDNS
 
                     outputBuffer = outputBuffer.Concat(nodeName).ToArray();
 
-                    var type = BitConverter.GetBytes((short)16); // TXT
+                    var type = BitConverter.GetBytes((short)16).Reverse().ToArray(); // TXT
 
                     outputBuffer = outputBuffer.Concat(type).ToArray();
 
-                    var @class = BitConverter.GetBytes((short)1); // Internet
+                    var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
 
                     outputBuffer = outputBuffer.Concat(@class).ToArray();
 
-                    var ttl = BitConverter.GetBytes(4500);
+                    var ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
 
                     outputBuffer = outputBuffer.Concat(ttl).ToArray();
 
-                    var recordLength = BitConverter.GetBytes((short)1);
+                    var recordLength = BitConverter.GetBytes((short)1).Reverse().ToArray();
 
                     outputBuffer = outputBuffer.Concat(recordLength).ToArray();
 
@@ -205,7 +205,7 @@ namespace ColdBear.mDNS
                     Console.WriteLine();
                 }
             }
-
+            Console.WriteLine();
             Console.WriteLine("****************");
         }
 
