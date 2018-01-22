@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -40,6 +41,9 @@ namespace ColdBear.mDNS
 
                     Array.Copy(data, pointer, buffer, 0, 2);
                     WriteAsNewLineHexToConsole(buffer, "Transaction ID");
+
+                    var requestId = new byte[2];
+                    Array.Copy(buffer, 0, buffer, 0, 2);
 
                     pointer += 2;
 
@@ -107,6 +111,52 @@ namespace ColdBear.mDNS
 
                     Array.Copy(data, pointer, buffer, 0, 2);
                     WriteAsNewLineHexToConsole(buffer, "Class");
+
+                    // Create a response!
+                    //
+                    var outputBuffer = new byte[0];
+
+                    var flags = new byte[2];
+
+                    var bitArray = new BitArray(flags);
+
+                    bitArray.Set(1, true); // QR
+                    bitArray.Set(6, true); // AA
+
+                    bitArray.CopyTo(flags, 0);
+
+                    var answerCount = BitConverter.GetBytes((short)1);
+                    var otherCounts = BitConverter.GetBytes((short)0);
+
+                    // Set the header
+                    //
+                    outputBuffer = outputBuffer.Concat(requestId).Concat(flags).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(otherCounts).ToArray();
+
+                    // Build the response
+                    //
+                    var nodeName = Encoding.UTF8.GetBytes("_http._tcp").Concat(new byte[1] { 0x00 }).ToArray();
+
+                    outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+
+                    var type = BitConverter.GetBytes((short)16);
+
+                    outputBuffer = outputBuffer.Concat(type).ToArray();
+
+                    var @class = BitConverter.GetBytes((short)1);
+
+                    outputBuffer = outputBuffer.Concat(@class).ToArray();
+
+                    var ttl = BitConverter.GetBytes(60);
+
+                    outputBuffer = outputBuffer.Concat(ttl).ToArray();
+
+                    var recordLength = BitConverter.GetBytes((short)0);
+
+                    outputBuffer = outputBuffer.Concat(recordLength).ToArray();
+
+                    var remoteEndPoint = new IPEndPoint(multicastaddress, 5353);
+
+                    udpClient.Send(outputBuffer, outputBuffer.Length, remoteEndPoint);
 
                     Console.WriteLine("****************************************************************");
                 }
