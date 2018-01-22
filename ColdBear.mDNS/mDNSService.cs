@@ -55,6 +55,8 @@ namespace ColdBear.mDNS
                     Array.Copy(data, pointer, buffer, 0, 2);
                     WriteAsNewLineHexToConsole(buffer, "Number of questions");
 
+                    short numberOfQuestions = BitConverter.ToInt16(buffer, 0);
+
                     pointer += 2;
 
                     Array.Copy(data, pointer, buffer, 0, 2);
@@ -112,6 +114,11 @@ namespace ColdBear.mDNS
                     Array.Copy(data, pointer, buffer, 0, 2);
                     WriteAsNewLineHexToConsole(buffer, "Class");
 
+                    if (numberOfQuestions == 0)
+                    {
+                        continue;
+                    }
+
                     // Create a response!
                     //
                     var outputBuffer = new byte[0];
@@ -120,8 +127,8 @@ namespace ColdBear.mDNS
 
                     var bitArray = new BitArray(flags);
 
-                    bitArray.Set(1, true); // QR
-                    bitArray.Set(6, true); // AA
+                    bitArray.Set(15, true); // QR
+                    bitArray.Set(10, true); // AA
 
                     bitArray.CopyTo(flags, 0);
 
@@ -130,31 +137,37 @@ namespace ColdBear.mDNS
 
                     // Set the header
                     //
-                    outputBuffer = outputBuffer.Concat(requestId).Concat(flags).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(otherCounts).ToArray();
+                    outputBuffer = outputBuffer.Concat(requestId).Concat(flags.Reverse()).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(otherCounts).ToArray();
 
                     // Build the response
                     //
-                    var nodeName = Encoding.UTF8.GetBytes("_http._tcp").Concat(new byte[1] { 0x00 }).ToArray();
+                    var nodeName = GetName("_http._tcp");
 
                     outputBuffer = outputBuffer.Concat(nodeName).ToArray();
 
-                    var type = BitConverter.GetBytes((short)16);
+                    var type = BitConverter.GetBytes((short)16); // TXT
 
                     outputBuffer = outputBuffer.Concat(type).ToArray();
 
-                    var @class = BitConverter.GetBytes((short)1);
+                    var @class = BitConverter.GetBytes((short)1); // Internet
 
                     outputBuffer = outputBuffer.Concat(@class).ToArray();
 
-                    var ttl = BitConverter.GetBytes(60);
+                    var ttl = BitConverter.GetBytes(4500);
 
                     outputBuffer = outputBuffer.Concat(ttl).ToArray();
 
-                    var recordLength = BitConverter.GetBytes((short)0);
+                    var recordLength = BitConverter.GetBytes((short)1);
 
                     outputBuffer = outputBuffer.Concat(recordLength).ToArray();
 
+                    ByteArrayToStringDump(outputBuffer);
+
+                    // Send the actual response.
+                    //
                     var remoteEndPoint = new IPEndPoint(multicastaddress, 5353);
+
+
 
                     udpClient.Send(outputBuffer, outputBuffer.Length, remoteEndPoint);
 
@@ -165,6 +178,53 @@ namespace ColdBear.mDNS
             {
                 Console.WriteLine(exp.Message);
             }
+        }
+
+        public static void ByteArrayToStringDump(byte[] ba)
+        {
+            Console.WriteLine("*** RESPONSE ***");
+
+            StringBuilder hex = new StringBuilder(ba.Length * 2);
+
+            int count = 0;
+
+            foreach (byte b in ba)
+            {
+                Console.Write(b.ToString("x2"));
+                Console.Write(" ");
+
+                count++;
+
+                if(count % 8 == 0)
+                {
+                    Console.Write("  ");
+                }
+
+                if (count % 16 == 0)
+                {
+                    Console.WriteLine();
+                }
+            }
+
+            Console.WriteLine("****************");
+        }
+
+        private byte[] GetName(string v)
+        {
+            var parts = v.Split('.');
+
+            var result = new byte[0];
+
+            foreach (var part in parts)
+            {
+                int length = part.Length;
+                byte lengthByte = Convert.ToByte(length);
+                result = result.Concat(new byte[1] { lengthByte }).Concat(Encoding.UTF8.GetBytes(part)).ToArray();
+            }
+
+            // Null terminator.
+            //
+            return result.Concat(new byte[1] { 0x00 }).ToArray();
         }
 
         private void WriteAsNewLineHexToConsole(byte[] buffer, string description)
