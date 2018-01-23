@@ -16,32 +16,58 @@ namespace ColdBear.mDNS
             {
                 var signal = new ManualResetEvent(false);
 
-                while (true)
+                IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
+                IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
+                EndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
+
+                IPEndPoint sender = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint senderRemote = (EndPoint)sender;
+
+                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                 {
-                    using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                    using (var sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                     {
-                        using (var sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                        socket.EnableBroadcast = true;
+                        socket.ExclusiveAddressUse = false;
+                        socket.MulticastLoopback = true;
+                        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+
+                        socket.Bind(localEndpoint);
+
+                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
+
+                        while (true)
                         {
-                            IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
-                            IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
-                            EndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
 
-                            socket.ExclusiveAddressUse = false;
-                            socket.MulticastLoopback = true;
-                            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+                            var buffer = new byte[1024];
+                            int numberOfbytesReceived = socket.Receive(buffer);
 
-                            socket.Bind(localEndpoint);
+                            //UdpClient udpClient = new UdpClient();
+                            //udpClient.MulticastLoopback = true;
+                            //udpClient.ExclusiveAddressUse = false;
+                            //udpClient.Client.MulticastLoopback = true;
+                            //udpClient.Client.ExclusiveAddressUse = false;
+                            //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
 
-                            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
+                            //udpClient.Client.Bind(localEndpoint);
+                            //udpClient.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
 
-                            //var buffer = new byte[1024];
-                            //int bytesReceived = socket.ReceiveFrom(buffer, ref localEndpoint);
-                            //socket.
+                            //udpClient.JoinMulticastGroup(multicastAddress);
 
-                            //var content = new byte[bytesReceived];
-                            //Array.Copy(buffer, 0, content, 0, bytesReceived);
+                            //var from = new IPEndPoint(0, 0);
 
-                            //ByteArrayToStringDump(content);
+                            //var content = udpClient.Receive(ref from);
+
+                            var content = new byte[numberOfbytesReceived];
+                            Array.Copy(buffer, 0, content, 0, numberOfbytesReceived);
+
+                            ByteArrayToStringDump(content);
+
+                            if(content[2] != 0x00)
+                            {
+                                Console.WriteLine("Not a query. Ignoring.");
+                                continue;
+                            }
 
                             var outputBuffer = new byte[0];
 
@@ -83,17 +109,25 @@ namespace ColdBear.mDNS
 
                             ByteArrayToStringDump(outputBuffer);
 
-                            sendSocket.ExclusiveAddressUse = false;
-                            sendSocket.MulticastLoopback = true;
-                            sendSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+                            //sendSocket.ExclusiveAddressUse = false;
+                            //sendSocket.MulticastLoopback = true;
+                            //sendSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
 
-                            EndPoint localEndpoint2 = new IPEndPoint(IPAddress.Any, 5353);
+                            //EndPoint localEndpoint2 = new IPEndPoint(IPAddress.Any, 5353);
 
-                            sendSocket.Bind(localEndpoint2);
+                            //sendSocket.Bind(localEndpoint2);
+
+                            //UdpClient udpClient = new UdpClient();
+                            //udpClient.ExclusiveAddressUse = false;
+                            //udpClient.EnableBroadcast = true;
+                            //udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+                            //udpClient.Client.Bind(new IPEndPoint(IPAddress.Any, 5353));
 
                             Thread.Sleep(1000);
 
                             var bytesSent = sendSocket.SendTo(outputBuffer, 0, outputBuffer.Length, SocketFlags.None, multicastEndpoint);
+
+                            //var bytesSent = udpClient.Send(outputBuffer, outputBuffer.Length, multicastEndpoint);
 
                             Console.WriteLine($"Wrote {bytesSent}");
                         }
