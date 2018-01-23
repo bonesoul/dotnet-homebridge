@@ -13,22 +13,81 @@ namespace ColdBear.mDNS
         {
             try
             {
-                UdpClient udpClient = new UdpClient();
+                UdpClient receiveUdpClient = new UdpClient();
+                UdpClient sendUdpClient = new UdpClient();
 
-                udpClient.ExclusiveAddressUse = false;
                 IPEndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
 
-                udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                udpClient.ExclusiveAddressUse = false;
+                receiveUdpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                receiveUdpClient.ExclusiveAddressUse = false;
+                receiveUdpClient.EnableBroadcast = true;
 
-                udpClient.Client.Bind(localEndpoint);
+                receiveUdpClient.Client.Bind(localEndpoint);
 
                 IPAddress multicastaddress = IPAddress.Parse("224.0.0.251");
-                udpClient.JoinMulticastGroup(multicastaddress);
+                receiveUdpClient.JoinMulticastGroup(multicastaddress);
+                receiveUdpClient.MulticastLoopback = true;
+
+                sendUdpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
+                sendUdpClient.JoinMulticastGroup(multicastaddress);
+                sendUdpClient.MulticastLoopback = true;
+                sendUdpClient.EnableBroadcast = true;
+
+                var remoteEndPoint = new IPEndPoint(multicastaddress, 5353);
+
+                //var data = Encoding.UTF8.GetBytes("Testing!");
+                //udpClient.Send(data, data.Length, remoteEndPoint);
+
+                // Create a response!
+                //
+                //var outputBuffer = new byte[0];
+
+                //var flags = new byte[2];
+
+                //var bitArray = new BitArray(flags);
+
+                //bitArray.Set(15, true); // QR
+                //bitArray.Set(10, true); // AA
+
+                //bitArray.CopyTo(flags, 0);
+
+                //var answerCount = BitConverter.GetBytes((short)1).Reverse().ToArray();
+                //var otherCounts = BitConverter.GetBytes((short)0);
+
+                //outputBuffer = outputBuffer.Concat(otherCounts).Concat(flags.Reverse()).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(otherCounts).ToArray();
+
+                //var nodeName = GetName("_http._tcp");
+
+                //outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+
+                //var type = BitConverter.GetBytes((short)16).Reverse().ToArray(); // TXT
+
+                //outputBuffer = outputBuffer.Concat(type).ToArray();
+
+                //var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
+
+                //outputBuffer = outputBuffer.Concat(@class).ToArray();
+
+                //var ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
+
+                //outputBuffer = outputBuffer.Concat(ttl).ToArray();
+
+                //var recordLength = BitConverter.GetBytes((short)1).Reverse().ToArray();
+
+                //outputBuffer = outputBuffer.Concat(recordLength).ToArray();
+
+                //outputBuffer = outputBuffer.Concat(new byte[1] { 0x00 }).ToArray();
+
+                //ByteArrayToStringDump(outputBuffer);
+
+                //// Send the actual response.
+                ////
+                //var bytesSent = udpClient.Send(outputBuffer, outputBuffer.Length, remoteEndPoint);
 
                 while (true)
                 {
-                    Byte[] data = udpClient.Receive(ref localEndpoint);
+                    Byte[] data = receiveUdpClient.Receive(ref localEndpoint);
 
                     Console.WriteLine("************************ REQUEST RECEIVED **********************");
 
@@ -161,15 +220,13 @@ namespace ColdBear.mDNS
 
                     outputBuffer = outputBuffer.Concat(recordLength).ToArray();
 
+                    outputBuffer = outputBuffer.Concat(new byte[1] { 0x00 }).ToArray();
+
                     ByteArrayToStringDump(outputBuffer);
 
                     // Send the actual response.
                     //
-                    var remoteEndPoint = new IPEndPoint(multicastaddress, 5353);
-
-
-
-                    udpClient.Send(outputBuffer, outputBuffer.Length, remoteEndPoint);
+                    var bytesSent = sendUdpClient.Send(outputBuffer, outputBuffer.Length, remoteEndPoint);
 
                     Console.WriteLine("****************************************************************");
                 }
@@ -195,7 +252,7 @@ namespace ColdBear.mDNS
 
                 count++;
 
-                if(count % 8 == 0)
+                if (count % 8 == 0)
                 {
                     Console.Write("  ");
                 }
