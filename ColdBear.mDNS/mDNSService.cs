@@ -14,12 +14,14 @@ namespace ColdBear.mDNS
         {
             try
             {
+                var signal = new ManualResetEvent(false);
+
                 using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                 {
 
                     IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
                     IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
-                    IPEndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
+                    EndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
 
                     socket.ExclusiveAddressUse = false;
                     socket.MulticastLoopback = true;
@@ -28,6 +30,24 @@ namespace ColdBear.mDNS
                     socket.Bind(localEndpoint);
 
                     socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
+
+                    var thd = new Thread(() =>
+                    {
+                        //var buffer = new byte[1024];
+                        //int bytesReceived = socket.ReceiveFrom(buffer, ref localEndpoint);
+
+                        //var content = new byte[bytesReceived];
+                        //Array.Copy(buffer, 0, content, 0, bytesReceived);
+
+                        //ByteArrayToStringDump(content);
+
+                        signal.Set();
+                    });
+
+                    signal.Reset();
+                    thd.Start();
+
+                    signal.WaitOne();
 
                     var outputBuffer = new byte[0];
 
@@ -69,7 +89,7 @@ namespace ColdBear.mDNS
 
                     ByteArrayToStringDump(outputBuffer);
 
-                    var bytesSent = socket.SendTo(outputBuffer, multicastEndpoint);
+                    var bytesSent = socket.SendTo(outputBuffer, 0, outputBuffer.Length, SocketFlags.None, multicastEndpoint);
 
                     Console.ReadKey();
                 }
@@ -302,7 +322,7 @@ namespace ColdBear.mDNS
 
         public static void ByteArrayToStringDump(byte[] ba)
         {
-            Console.WriteLine("*** RESPONSE ***");
+            Console.WriteLine("***************************");
 
             StringBuilder hex = new StringBuilder(ba.Length * 2);
 
@@ -325,8 +345,9 @@ namespace ColdBear.mDNS
                     Console.WriteLine();
                 }
             }
+
             Console.WriteLine();
-            Console.WriteLine("****************");
+            Console.WriteLine("***************************");
         }
 
         private byte[] GetName(string v)
