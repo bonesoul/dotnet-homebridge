@@ -16,83 +16,90 @@ namespace ColdBear.mDNS
             {
                 var signal = new ManualResetEvent(false);
 
-                using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                while (true)
                 {
-
-                    IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
-                    IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
-                    EndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
-
-                    socket.ExclusiveAddressUse = false;
-                    socket.MulticastLoopback = true;
-                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
-
-                    socket.Bind(localEndpoint);
-
-                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
-
-                    var thd = new Thread(() =>
+                    using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                     {
-                        //var buffer = new byte[1024];
-                        //int bytesReceived = socket.ReceiveFrom(buffer, ref localEndpoint);
+                        using (var sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                        {
+                            IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
+                            IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
+                            EndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
 
-                        //var content = new byte[bytesReceived];
-                        //Array.Copy(buffer, 0, content, 0, bytesReceived);
+                            socket.ExclusiveAddressUse = false;
+                            socket.MulticastLoopback = true;
+                            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
 
-                        //ByteArrayToStringDump(content);
+                            socket.Bind(localEndpoint);
 
-                        signal.Set();
-                    });
+                            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
 
-                    signal.Reset();
-                    thd.Start();
+                            //var buffer = new byte[1024];
+                            //int bytesReceived = socket.ReceiveFrom(buffer, ref localEndpoint);
+                            //socket.
 
-                    signal.WaitOne();
+                            //var content = new byte[bytesReceived];
+                            //Array.Copy(buffer, 0, content, 0, bytesReceived);
 
-                    var outputBuffer = new byte[0];
+                            //ByteArrayToStringDump(content);
 
-                    var flags = new byte[2];
+                            var outputBuffer = new byte[0];
 
-                    var bitArray = new BitArray(flags);
+                            var flags = new byte[2];
 
-                    bitArray.Set(15, true); // QR
-                    bitArray.Set(10, true); // AA
+                            var bitArray = new BitArray(flags);
 
-                    bitArray.CopyTo(flags, 0);
+                            bitArray.Set(15, true); // QR
+                            bitArray.Set(10, true); // AA
 
-                    var answerCount = BitConverter.GetBytes((short)1).Reverse().ToArray();
-                    var otherCounts = BitConverter.GetBytes((short)0);
+                            bitArray.CopyTo(flags, 0);
 
-                    outputBuffer = outputBuffer.Concat(otherCounts).Concat(flags.Reverse()).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(otherCounts).ToArray();
+                            var answerCount = BitConverter.GetBytes((short)1).Reverse().ToArray();
+                            var otherCounts = BitConverter.GetBytes((short)0);
 
-                    var nodeName = GetName("_http._tcp");
+                            outputBuffer = outputBuffer.Concat(otherCounts).Concat(flags.Reverse()).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(otherCounts).ToArray();
 
-                    outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+                            var nodeName = GetName("_http._tcp");
 
-                    var type = BitConverter.GetBytes((short)16).Reverse().ToArray(); // TXT
+                            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
 
-                    outputBuffer = outputBuffer.Concat(type).ToArray();
+                            var type = BitConverter.GetBytes((short)16).Reverse().ToArray(); // TXT
 
-                    var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
+                            outputBuffer = outputBuffer.Concat(type).ToArray();
 
-                    outputBuffer = outputBuffer.Concat(@class).ToArray();
+                            var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
 
-                    var ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
+                            outputBuffer = outputBuffer.Concat(@class).ToArray();
 
-                    outputBuffer = outputBuffer.Concat(ttl).ToArray();
+                            var ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
 
-                    var recordLength = BitConverter.GetBytes((short)1).Reverse().ToArray();
+                            outputBuffer = outputBuffer.Concat(ttl).ToArray();
 
-                    outputBuffer = outputBuffer.Concat(recordLength).ToArray();
+                            var recordLength = BitConverter.GetBytes((short)1).Reverse().ToArray();
 
-                    outputBuffer = outputBuffer.Concat(new byte[1] { 0x00 }).ToArray();
+                            outputBuffer = outputBuffer.Concat(recordLength).ToArray();
 
-                    ByteArrayToStringDump(outputBuffer);
+                            outputBuffer = outputBuffer.Concat(new byte[1] { 0x00 }).ToArray();
 
-                    var bytesSent = socket.SendTo(outputBuffer, 0, outputBuffer.Length, SocketFlags.None, multicastEndpoint);
+                            ByteArrayToStringDump(outputBuffer);
 
-                    Console.ReadKey();
+                            sendSocket.ExclusiveAddressUse = false;
+                            sendSocket.MulticastLoopback = true;
+                            sendSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+
+                            EndPoint localEndpoint2 = new IPEndPoint(IPAddress.Any, 5353);
+
+                            sendSocket.Bind(localEndpoint2);
+
+                            Thread.Sleep(1000);
+
+                            var bytesSent = sendSocket.SendTo(outputBuffer, 0, outputBuffer.Length, SocketFlags.None, multicastEndpoint);
+
+                            Console.WriteLine($"Wrote {bytesSent}");
+                        }
+                    }
                 }
+
                 //UdpClient receiveUdpClient = new UdpClient();
                 //UdpClient sendUdpClient = new UdpClient();
 
