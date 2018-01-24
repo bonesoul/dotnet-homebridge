@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -15,6 +16,30 @@ namespace ColdBear.mDNS
             try
             {
                 var signal = new ManualResetEvent(false);
+
+                NetworkInterface[] nics = NetworkInterface.GetAllNetworkInterfaces();
+
+                IPv4InterfaceProperties selectedInterface = null;
+
+                foreach (NetworkInterface adapter in nics)
+                {
+                    IPInterfaceProperties ip_properties = adapter.GetIPProperties();
+
+                    if (adapter.GetIPProperties().MulticastAddresses.Count == 0)
+                        continue; // most of VPN adapters will be skipped
+                    if (!adapter.SupportsMulticast)
+                        continue; // multicast is meaningless for this type of connection
+                    if (OperationalStatus.Up != adapter.OperationalStatus)
+                        continue; // this adapter is off or not connected
+                    IPv4InterfaceProperties p = adapter.GetIPProperties().GetIPv4Properties();
+
+                    if (null == p)
+                        continue; // IPv4 is not configured on this adapter
+
+                    selectedInterface = p;
+
+                    break;
+                }
 
                 IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
                 IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
@@ -31,6 +56,7 @@ namespace ColdBear.mDNS
                         socket.ExclusiveAddressUse = false;
                         socket.MulticastLoopback = true;
                         socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, (int)IPAddress.HostToNetworkOrder(selectedInterface.Index));
 
                         socket.Bind(localEndpoint);
 
@@ -63,7 +89,7 @@ namespace ColdBear.mDNS
 
                             ByteArrayToStringDump(content);
 
-                            if(content[2] != 0x00)
+                            if (content[2] != 0x00)
                             {
                                 Console.WriteLine("Not a query. Ignoring.");
                                 continue;
