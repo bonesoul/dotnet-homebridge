@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -49,32 +50,35 @@ namespace ColdBear.mDNS
 
                 Console.WriteLine($"Bound to {selectedInterface.ToString()}");
 
+                var ipAddress = "192.168.86.69";
+
                 IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
                 IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
-                IPAddress localAddress = IPAddress.Parse("192.168.20.107");
+                IPAddress localAddress = IPAddress.Parse(ipAddress);
                 //EndPoint localEndpoint = new IPEndPoint(IPAddress.Any, 5353);
                 EndPoint localEndpoint = new IPEndPoint(localAddress, 5353);
 
-                IPEndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint senderRemote = new IPEndPoint(IPAddress.Any, 0);
 
                 using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
                 {
-                    using (var sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                    socket.EnableBroadcast = true;
+                    socket.ExclusiveAddressUse = false;
+                    socket.MulticastLoopback = true;
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
+                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, (int)IPAddress.HostToNetworkOrder(selectedInterface.Index));
+
+                    socket.Bind(localEndpoint);
+
+                    socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
+
+                    while (true)
                     {
-                        socket.EnableBroadcast = true;
-                        socket.ExclusiveAddressUse = false;
-                        socket.MulticastLoopback = true;
-                        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
-                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, (int)IPAddress.HostToNetworkOrder(selectedInterface.Index));
+                        try
 
-                        socket.Bind(localEndpoint);
-
-                        socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(multicastAddress, IPAddress.Any));
-
-                        while (true)
                         {
-                            var buffer = new byte[1024];
-                            int numberOfbytesReceived = socket.Receive(buffer);
+                            var buffer = new byte[2048];
+                            int numberOfbytesReceived = socket.ReceiveFrom(buffer, ref senderRemote);
 
                             var content = new byte[numberOfbytesReceived];
                             Array.Copy(buffer, 0, content, 0, numberOfbytesReceived);
@@ -87,115 +91,71 @@ namespace ColdBear.mDNS
                                 continue;
                             }
 
+                            // Build the header that indicates this is a response.
+                            //
                             var outputBuffer = new byte[0];
 
                             var flags = new byte[2];
 
                             var bitArray = new BitArray(flags);
 
+                            // We're using 15 and 10 since the Endianness of this bytes is reversed :)
+                            //
                             bitArray.Set(15, true); // QR
                             bitArray.Set(10, true); // AA
 
                             bitArray.CopyTo(flags, 0);
 
-                            var answerCount = BitConverter.GetBytes((short)1).Reverse().ToArray();
+                            var questionCount = BitConverter.GetBytes((short)1).Reverse().ToArray();
+                            var answerCount = BitConverter.GetBytes((short)4).Reverse().ToArray();
                             var additionalCounts = BitConverter.GetBytes((short)1).Reverse().ToArray();
-                            var otherCounts = BitConverter.GetBytes((short)0);
-                            outputBuffer = outputBuffer.Concat(otherCounts).Concat(flags.Reverse()).Concat(otherCounts).Concat(answerCount).Concat(otherCounts).Concat(additionalCounts).ToArray();
+                            var otherCounts = BitConverter.GetBytes((short)0).Reverse().ToArray();
 
-                            // Add the PTR record.
+                            // Add the header to the output buffer.
                             //
-                            var ptrNodeName = GetName("_http._tcp");
+                            outputBuffer = outputBuffer.Concat(otherCounts).Concat(flags.Reverse()).Concat(questionCount).Concat(answerCount).Concat(otherCounts).Concat(additionalCounts).ToArray();
 
-                            outputBuffer = outputBuffer.Concat(ptrNodeName).ToArray();
+                            int endOfHeaderBufferLength = outputBuffer.Length;
 
-                            var type = BitConverter.GetBytes((short)12).Reverse().ToArray(); // TXT
+                            var nodeName = GetName("_services._dns-sd._udp.local");
 
-                            outputBuffer = outputBuffer.Concat(type).ToArray();
+                            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+
+                            var typeBytes = BitConverter.GetBytes((short)12).Reverse().ToArray(); // PTR
+
+                            outputBuffer = outputBuffer.Concat(typeBytes).ToArray();
 
                             var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
 
                             outputBuffer = outputBuffer.Concat(@class).ToArray();
 
-                            var ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
+                            Dictionary<string, string> values = new Dictionary<string, string>();
+                            values.Add("sf", "1");
+                            values.Add("ff", "0x00");
+                            values.Add("ci", "2");
+                            values.Add("id", "C5:22:3D:E3:CE:D6");
+                            values.Add("md", "Climenole");
+                            values.Add("s#", "1");
+                            values.Add("c#", "678");
 
-                            outputBuffer = outputBuffer.Concat(ttl).ToArray();
+                            outputBuffer = AddTxt(outputBuffer, "Jarvis._hap._tcp.local", values);
+                            outputBuffer = AddPtr(outputBuffer, "_services._dns-sd._udp.local", "_hap._tcp.local");
+                            outputBuffer = AddPtr(outputBuffer, "_hap._tcp.local", "Jarvis._hap._tcp.local");
+                            outputBuffer = AddSrv(outputBuffer, "Jarvis._hap._tcp.local", 0, 0, 51826, "Surface.local");
 
-                            var ptrServiceName = GetName("_http._tcp.local");
-
-                            var recordLength = BitConverter.GetBytes((short)ptrServiceName.Length).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(recordLength).ToArray();
-
-                            outputBuffer = outputBuffer.Concat(ptrServiceName).ToArray();
-
-                            // Add the SRV record
-                            //
-                            var nodeName = GetName("myserver._http._tcp");
-
-                            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
-
-                            type = BitConverter.GetBytes((short)33).Reverse().ToArray(); // SRV
-
-                            outputBuffer = outputBuffer.Concat(type).ToArray();
-
-                            @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
-
-                            outputBuffer = outputBuffer.Concat(@class).ToArray();
-
-                            ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(ttl).ToArray();
-
-                            var priority = BitConverter.GetBytes((short)0).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(priority).ToArray();
-
-                            var weight = BitConverter.GetBytes((short)0).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(weight).ToArray();
-
-                            var port = BitConverter.GetBytes((short)80).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(port).ToArray();
-
-                            var dataLength = BitConverter.GetBytes((short)1).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(new byte[1] { 0x00 }).ToArray();
-
-                            // Add the TXT record.
-                            //
-                            nodeName = GetName("myserver._http._tcp");
-
-                            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
-
-                            type = BitConverter.GetBytes((short)16).Reverse().ToArray(); // TXT
-
-                            outputBuffer = outputBuffer.Concat(type).ToArray();
-
-                            @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
-
-                            outputBuffer = outputBuffer.Concat(@class).ToArray();
-
-                            ttl = BitConverter.GetBytes(4500).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(ttl).ToArray();
-
-                            var txtRecord = GetTxtRecord("value=tom");
-
-                            recordLength = BitConverter.GetBytes((short)txtRecord.Length).Reverse().ToArray();
-
-                            outputBuffer = outputBuffer.Concat(recordLength).ToArray();
-
-                            outputBuffer = outputBuffer.Concat(txtRecord).ToArray();
+                            outputBuffer = AddARecord(outputBuffer, "Surface.local", "A", ipAddress);
 
                             ByteArrayToStringDump(outputBuffer);
 
-                            Thread.Sleep(1000);
+                            Thread.Sleep(50);
 
-                            var bytesSent = socket.SendTo(outputBuffer, 0, outputBuffer.Length, SocketFlags.None, multicastEndpoint);
+                            var bytesSent = socket.SendTo(outputBuffer, 0, outputBuffer.Length, SocketFlags.None, senderRemote);
 
                             Console.WriteLine($"Wrote {bytesSent}");
+                        }
+                        catch (Exception exp)
+                        {
+                            Console.WriteLine(exp.Message);
                         }
                     }
                 }
@@ -206,11 +166,168 @@ namespace ColdBear.mDNS
             }
         }
 
-        private byte[] GetTxtRecord(string v)
+        private byte[] AddARecord(byte[] outputBuffer, string hostName, string type, string ipAddress)
+        {
+            var nodeName = GetName(hostName);
+
+            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+
+            var typeBytes = BitConverter.GetBytes((short)1).Reverse().ToArray(); // A
+
+            outputBuffer = outputBuffer.Concat(typeBytes).ToArray();
+
+            var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
+            @class[0] = @class[0].SetBit(7); // set flush to true
+
+            outputBuffer = outputBuffer.Concat(@class).ToArray();
+
+            var ttl = BitConverter.GetBytes(120).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(ttl).ToArray();
+
+            var address = ConvertIpAddress(ipAddress);
+
+            // For IP4, this will be an int32
+            var dataLength = BitConverter.GetBytes((short)address.Length).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(dataLength).ToArray();
+
+            outputBuffer = outputBuffer.Concat(address).ToArray();
+
+            //outputBuffer = outputBuffer.Concat(new byte[2] { 0xC0, 0x0C }).ToArray();
+
+            return outputBuffer;
+        }
+
+        private byte[] ConvertIpAddress(string ipAddress)
+        {
+            var parts = ipAddress.Split('.');
+
+            byte[] result = new byte[4];
+
+            int index = 0;
+
+            foreach (var part in parts)
+            {
+                result[index++] = byte.Parse(part);
+            }
+
+            return result;
+        }
+
+        private byte[] AddSrv(byte[] outputBuffer, string host, short priority, short weight, int port, string v4)
+        {
+            var nodeName = GetName(host);
+
+            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+
+            var type = BitConverter.GetBytes((short)33).Reverse().ToArray(); // SRV
+
+            outputBuffer = outputBuffer.Concat(type).ToArray();
+
+            var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
+            @class[0] = @class[0].SetBit(7); // set flush to true
+
+            outputBuffer = outputBuffer.Concat(@class).ToArray();
+
+            var ttl = BitConverter.GetBytes(120).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(ttl).ToArray();
+
+            var svrName = GetName(v4);
+
+            int totalLength = svrName.Length + 2 + 2 + 2; // name + priority + weight + port
+
+            var dataLength = BitConverter.GetBytes((short)totalLength).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(dataLength).ToArray();
+
+            var priorityBytes = BitConverter.GetBytes(priority).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(priorityBytes).ToArray();
+
+            var weightBytes = BitConverter.GetBytes(weight).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(weightBytes).ToArray();
+
+            var portBytes = BitConverter.GetBytes((short)port).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(portBytes).ToArray();
+
+            outputBuffer = outputBuffer.Concat(svrName).ToArray();
+
+            return outputBuffer;
+        }
+
+        private byte[] AddTxt(byte[] outputBuffer, string v, Dictionary<string, string> values)
+        {
+            var nodeName = GetName(v);
+
+            outputBuffer = outputBuffer.Concat(nodeName).ToArray();
+
+            var type = BitConverter.GetBytes((short)16).Reverse().ToArray(); // TXT
+
+            outputBuffer = outputBuffer.Concat(type).ToArray();
+
+            var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
+            @class[0] = @class[0].SetBit(7); // set flush to true
+
+            outputBuffer = outputBuffer.Concat(@class).ToArray();
+
+            var ttl = BitConverter.GetBytes(120).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(ttl).ToArray();
+
+            var txtRecord = GetTxtRecord(values);
+
+            var recordLength = BitConverter.GetBytes((short)txtRecord.Length).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(recordLength).ToArray();
+
+            outputBuffer = outputBuffer.Concat(txtRecord).ToArray();
+
+            return outputBuffer;
+        }
+
+        private byte[] AddPtr(byte[] outputBuffer, string v1, string v2)
+        {
+            var ptrNodeName = GetName(v1);
+
+            outputBuffer = outputBuffer.Concat(ptrNodeName).ToArray();
+
+            var type = BitConverter.GetBytes((short)12).Reverse().ToArray(); // PTR
+
+            outputBuffer = outputBuffer.Concat(type).ToArray();
+
+            var @class = BitConverter.GetBytes((short)1).Reverse().ToArray(); // Internet
+            //@class[0] = @class[0].SetBit(7); // set flush to true
+
+            outputBuffer = outputBuffer.Concat(@class).ToArray();
+
+            var ttl = BitConverter.GetBytes(120).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(ttl).ToArray();
+
+            var ptrServiceName = GetName(v2);
+
+            var recordLength = BitConverter.GetBytes((short)ptrServiceName.Length).Reverse().ToArray();
+
+            outputBuffer = outputBuffer.Concat(recordLength).ToArray();
+
+            outputBuffer = outputBuffer.Concat(ptrServiceName).ToArray();
+
+            return outputBuffer;
+        }
+
+        private byte[] GetTxtRecord(Dictionary<string, string> values)
         {
             var result = new byte[0];
 
-            result = result.Concat(new byte[1] { (byte)v.Length }).Concat(Encoding.UTF8.GetBytes(v)).ToArray();
+            foreach (var keypair in values)
+            {
+                string fullKeyPair = $"{keypair.Key}={keypair.Value}";
+                result = result.Concat(new byte[1] { (byte)fullKeyPair.Length }).Concat(Encoding.UTF8.GetBytes(fullKeyPair)).ToArray();
+            }
 
             return result;
         }
@@ -274,6 +391,30 @@ namespace ColdBear.mDNS
             Console.Write(description);
 
             Console.WriteLine();
+        }
+    }
+
+    public static class ByteExtensions
+    {
+        public static bool IsBitSet(this byte b, int pos)
+        {
+            if (pos < 0 || pos > 7)
+                throw new ArgumentOutOfRangeException("pos", "Index must be in the range of 0-7.");
+
+            return (b & (1 << pos)) != 0;
+        }
+
+        public static byte SetBit(this byte b, int pos)
+        {
+            if (pos < 0 || pos > 7)
+                throw new ArgumentOutOfRangeException("pos", "Index must be in the range of 0-7.");
+
+            return (byte)(b | (1 << pos));
+        }
+
+        public static string ToBinaryString(this byte b)
+        {
+            return Convert.ToString(b, 2).PadLeft(8, '0');
         }
     }
 }

@@ -16,8 +16,8 @@ namespace ColdBear.Jarvis
     {
         public const string ID = "C4:22:3D:E3:CE:D6";
 
-        public static TcpClient CurrentlyConnectedController;
-        public static ControllerSession CurrentSession;
+        //public static TcpClient CurrentlyConnectedController;
+        //public static ControllerSession CurrentSession;
 
         static void Main(string[] args)
         {
