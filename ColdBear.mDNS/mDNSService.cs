@@ -50,7 +50,7 @@ namespace ColdBear.mDNS
 
                 Console.WriteLine($"Bound to {selectedInterface.ToString()}");
 
-                var ipAddress = "192.168.86.69";
+                var ipAddress = "192.168.86.111";
 
                 IPAddress multicastAddress = IPAddress.Parse("224.0.0.251");
                 IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, 5353);
@@ -163,6 +163,12 @@ namespace ColdBear.mDNS
             catch (Exception exp)
             {
                 Console.WriteLine(exp.Message);
+
+                if(exp.InnerException != null)
+                {
+                    Console.WriteLine(exp.InnerException.Message);
+
+                }
             }
         }
 

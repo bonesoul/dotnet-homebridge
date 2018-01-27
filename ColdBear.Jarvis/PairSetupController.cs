@@ -1,5 +1,4 @@
-﻿//using Chaos.NaCl;
-using Chaos.NaCl;
+﻿using Chaos.NaCl;
 using CryptoSysAPI;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Generators;
@@ -13,11 +12,10 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Web.Http;
 
-namespace ColdBear.ConsoleApp
+namespace ColdBear.Climenole
 {
-    public class PairSetupController : ApiController
+    public class PairSetupController
     {
         private static SRPServer sessionServer;
         private static string CODE;
@@ -30,7 +28,6 @@ namespace ColdBear.ConsoleApp
         private static byte[] server_b;
         private static System.Numerics.BigInteger server_B;
 
-        //public Task<HttpResponseMessage> Post(byte[] body)
         public Tuple<string, byte[]> Post(byte[] body)
         {
             Debug.WriteLine($"Length of input is {body.Length} bytes");
@@ -98,14 +95,6 @@ namespace ColdBear.ConsoleApp
                 byte[] output = TLVParser.Serialise(responseTLV);
 
                 return new Tuple<string, byte[]>("application/pairing+tlv8", output);
-
-                //ByteArrayContent content = new ByteArrayContent(output);
-                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                //{
-                //    Content = content
-                //};
             }
             else if (state == 3)
             {
@@ -174,14 +163,6 @@ namespace ColdBear.ConsoleApp
                 byte[] output = TLVParser.Serialise(responseTLV);
 
                 return new Tuple<string, byte[]>("application/pairing+tlv8", output);
-
-                //ByteArrayContent content = new ByteArrayContent(output);
-                //content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pairing+tlv8");
-
-                //return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-                //{
-                //    Content = content
-                //};
             }
             else if (state == 5)
             {
@@ -628,12 +609,6 @@ namespace ColdBear.ConsoleApp
                 Console.WriteLine(Str);
                 Console.WriteLine(General.ErrorCode());
                 Console.WriteLine("");
-
-
-
-
-
-
 
 
                 Debug.WriteLine("Decrypted TLV");

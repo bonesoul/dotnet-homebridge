@@ -1,19 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2024
+VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColdBear.HomeBridge", "ColdBear.HomeBridge\ColdBear.HomeBridge.csproj", "{BC289849-8E53-4186-A2E1-01264082BFD6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ColdBear.Console", "ColdBear.Console\ColdBear.Console.csproj", "{0D7EC6B5-8270-4041-810B-9CEFDFCA5FD3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{674EB7FA-8DBB-40C4-9498-F95C568AC28C}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "COSE.Std10", "..\COSE-csharp\COSE\COSE.Std10.csproj", "{A2E40E48-4AB7-4584-854E-F2DDB05CD79C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColdBear.Jarvis", "ColdBear.Jarvis\ColdBear.Jarvis.csproj", "{BE02FE03-34C7-4047-9598-C748B232D947}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColdBear.Climenole", "ColdBear.Jarvis\ColdBear.Climenole.csproj", "{BE02FE03-34C7-4047-9598-C748B232D947}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ColdBear.mDNS", "ColdBear.mDNS\ColdBear.mDNS.csproj", "{61ADDF94-66F7-49BC-B8BE-DD5CD5FD006F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColdBear.mDNS", "ColdBear.mDNS\ColdBear.mDNS.csproj", "{61ADDF94-66F7-49BC-B8BE-DD5CD5FD006F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -34,12 +32,6 @@ Global
 		{0D7EC6B5-8270-4041-810B-9CEFDFCA5FD3}.Deploy|Any CPU.Build.0 = Debug|Any CPU
 		{0D7EC6B5-8270-4041-810B-9CEFDFCA5FD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0D7EC6B5-8270-4041-810B-9CEFDFCA5FD3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{674EB7FA-8DBB-40C4-9498-F95C568AC28C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{674EB7FA-8DBB-40C4-9498-F95C568AC28C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{674EB7FA-8DBB-40C4-9498-F95C568AC28C}.Deploy|Any CPU.ActiveCfg = Debug|Any CPU
-		{674EB7FA-8DBB-40C4-9498-F95C568AC28C}.Deploy|Any CPU.Build.0 = Debug|Any CPU
-		{674EB7FA-8DBB-40C4-9498-F95C568AC28C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{674EB7FA-8DBB-40C4-9498-F95C568AC28C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A2E40E48-4AB7-4584-854E-F2DDB05CD79C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A2E40E48-4AB7-4584-854E-F2DDB05CD79C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2E40E48-4AB7-4584-854E-F2DDB05CD79C}.Deploy|Any CPU.ActiveCfg = Deploy|Any CPU

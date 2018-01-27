@@ -1,5 +1,6 @@
 ﻿//using Bonjour;
 //using CryptoSysAPI;
+using CryptoSysAPI;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,23 +9,22 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Web;
 
-namespace ColdBear.Jarvis
+namespace ColdBear.Climenole
 {
     class Program
     {
         public const string ID = "C4:22:3D:E3:CE:D6";
 
-        //public static TcpClient CurrentlyConnectedController;
-        //public static ControllerSession CurrentSession;
+        public static TcpClient CurrentlyConnectedController;
+        public static ControllerSession CurrentSession;
 
         static void Main(string[] args)
         {
-            //bool run = true;
+            bool run = true;
 
-            //TcpListener controllerListener = null;
-            //TcpListener managementListener = null;
+            TcpListener controllerListener = null;
+            TcpListener managementListener = null;
 
             var t1 = new Thread(() =>
             {
@@ -53,47 +53,44 @@ namespace ColdBear.Jarvis
                 //var record = service.Register(0, 0, "Climenole", "_hap._tcp", null, null, 51826, txtRecord, mgr);
 
                 //Console.WriteLine("Advertising Service in background thread");
-
-
-
             });
 
             t1.Start();
 
-            //var t2 = new Thread(() =>
-            //{
-            //    Thread.CurrentThread.IsBackground = true;
-            //    Thread.CurrentThread.Name = "Controller Port";
+            var t2 = new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                Thread.CurrentThread.Name = "Controller Port";
 
-            //    IPAddress address = IPAddress.Any;
-            //    IPEndPoint port = new IPEndPoint(address, 51826);
+                IPAddress address = IPAddress.Any;
+                IPEndPoint port = new IPEndPoint(address, 51826);
 
-            //    controllerListener = new TcpListener(port);
-            //    controllerListener.Start();
+                controllerListener = new TcpListener(port);
+                controllerListener.Start();
 
-            //    Console.WriteLine("--Controller Server Started--");
+                Console.WriteLine("--Controller Server Started--");
 
-            //    while (run) //loop forever
-            //    {
-            //        try
-            //        {
-            //            Console.WriteLine("Waiting for Controller to connect");
+                while (run) //loop forever
+                {
+                    try
+                    {
+                        Console.WriteLine("Waiting for Controller to connect");
 
-            //            TcpClient client = controllerListener.AcceptTcpClient();
+                        TcpClient client = controllerListener.AcceptTcpClient();
 
-            //            CurrentlyConnectedController = client;
+                        CurrentlyConnectedController = client;
 
-            //            Console.WriteLine("A Controller has connected!");
+                        Console.WriteLine("A Controller has connected!");
 
-            //            Thread clientThread = new Thread(new ParameterizedThreadStart(HandleControllerConnection));
-            //            clientThread.Start(client);
-            //        }
-            //        catch
-            //        { }
-            //    }
-            //});
+                        Thread clientThread = new Thread(new ParameterizedThreadStart(HandleControllerConnection));
+                        clientThread.Start(client);
+                    }
+                    catch
+                    { }
+                }
+            });
 
-            //t2.Start();
+            t2.Start();
 
             //var t3 = new Thread(() =>
             //{
@@ -134,11 +131,10 @@ namespace ColdBear.Jarvis
             //controllerListener?.Stop();
 
             t1?.Join();
-            //t2?.Join();
+            t2?.Join();
             //t3?.Join();
         }
 
-        /*
         private static void HandleControllerConnection(object obj)
         {
             TcpClient tcpClient = (TcpClient)obj;
@@ -452,6 +448,8 @@ namespace ColdBear.Jarvis
             tcpClient.Close();
             tcpClient.Dispose();
         }
+
+        /*
 
         private static void HandleManagerConnection(object obj)
         {
